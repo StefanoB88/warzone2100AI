@@ -14,10 +14,10 @@ function checkWeaponPercentage(enemyTypeLists, weaponLists) {
     const weaponSets = weaponLists.map(list => new Set(list));
 
     for (const unit of enemyUnits) {
-        if (unit.weapons.length > 0 && weaponSets.some(set => set.has(unit.weapons[0].name))) {
+        if (unit.weapons?.length > 0 && weaponSets.some(set => set.has(unit.weapons[0]?.name))) {
             weaponCount++;
         }
-    }
+    }    
 
     return (weaponCount / totalEnemies) * 100;
 }
@@ -35,4 +35,34 @@ function checkTankKillerWeapons() {
         [DROID_WEAPON, DROID_CYBORG],
         [ROCKET_WEAPON_LIST, CYBORG_HEAVY_ROCKETS, CYBORG_LIGHT_ROCKETS]
     );
+}
+
+// If the enemies have a lot of defenses, produce some bunker buster
+function checkCurrentEnemyDefenses() {
+    const enemyIndex = currentEnemy.position;
+
+    const currentEnemyDefenses = enumStruct(enemyIndex, DEFENSE).sort(sortByDistToBase)
+
+    let probability = currentEnemyDefenses.length / useBunkerBuster ? 1.2 : 2;
+
+    return probability;
+}
+
+// Produce long distance support tanks in case we have a huge group of front tanks
+function checkLongRangeSupport() {
+    let probability = 5;
+
+    const myDroidsSize = enumGroup(attackerGroup)
+    .filter(droid => !HOWITZERS_WEAPON_LIST.includes(droid.weapons?.[0]?.name ?? ""))
+    .length
+
+    if (myDroidsSize >= 50) {
+        probability = 10
+    } else if (myDroidsSize >= 80) {
+        probability = 20
+    } else if (myDroidsSize >= 100) {
+        probability = 25
+    }
+
+    return probability
 }

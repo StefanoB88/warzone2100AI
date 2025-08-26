@@ -75,6 +75,20 @@ function sortByDistToPlayerBase(obj1, obj2, playerIndex) {
 	return (dist1 - dist2);
 }
 
+// Sort an object from farthest to closest to the player's base
+function sortByDistToFarthestPlayerBase(obj1, obj2, playerIndex) {
+    if (playerIndex === undefined) {
+        return;
+    }
+
+    let playerBase = alliesList[playerIndex].base;
+
+    let dist1 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj1.x, obj1.y);
+    let dist2 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj2.x, obj2.y);
+    
+    return (dist2 - dist1);
+}
+
 // Sort an object according to the distance from the base
 function sortByDistToBase(obj1, obj2) {
     let playerBase = enumStruct(me, PLAYER_HQ_STAT)[0] ?? BASE
@@ -84,12 +98,28 @@ function sortByDistToBase(obj1, obj2) {
 	return (dist1 - dist2);
 }
 
-// Get all the allies players data
+// Get all the allies alive players data
 function getAliveAllyPlayersData() {
     const allies = [];
 
     for (let i = 0; i < maxPlayers; ++i) {
         if (i !== me && allianceExistsBetween(me, i) && isPlayerAlive(i)) {
+            const allyPlayerData = playerDataObject(i);
+            if (allyPlayerData) {
+                allies.push(allyPlayerData);
+            }
+        }
+    }
+
+    return allies;
+}
+
+// Get all the allies defeated players data
+function getDefeatedAllyPlayersData() {
+    const allies = [];
+
+    for (let i = 0; i < maxPlayers; ++i) {
+        if (i !== me && allianceExistsBetween(me, i) && !isPlayerAlive(i)) {
             const allyPlayerData = playerDataObject(i);
             if (allyPlayerData) {
                 allies.push(allyPlayerData);
@@ -242,5 +272,14 @@ function isBaseStructure(type) {
 }
 
 function isNearBase(x, y) {
-    return distBetweenTwoPoints(x, y, BASE.x, BASE.y) <= 30;
+    return distBetweenTwoPoints(x, y, BASE.x, BASE.y) <= BASE_THREAT_RANGE;
+}
+
+// Fisher-Yates shuffle for better randomization
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    }
+    return array;
 }

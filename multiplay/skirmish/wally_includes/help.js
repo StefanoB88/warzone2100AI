@@ -28,6 +28,8 @@ function checkAllyBaseInTrouble() {
 
 // Returns true if the ally is helped, false otherwise
 function helpAlly(allyPlayerData) {
+	currentHelpedAlly = allyPlayerData
+
 	const playerData = allyPlayerData;
 
     if (enumGroup(attackerGroup).length < 10) {
@@ -89,48 +91,60 @@ function myBaseInTrouble() {
 }
 
 function donateOil() {
-	let currentPower = getRealPower(me);
+    let currentPower = getRealPower(me);
 
-	// Do not proceed if power is below 5000 or no allies exist
-	if (currentPower < 5000 || alliesList.length === 0) {
-		return;
-	}
+    // Do not proceed if power is below 5000 or no allies exist
+    if (currentPower < 5000 || alliesList.length === 0) {
+        return;
+    }
 
-	// Shuffle alliesList to select allies in random order
-	const shuffledAllies = [...alliesList].sort(() => Math.random() - 0.5);
+    // Shuffle alliesList to select allies in random order
+    const shuffledAllies = shuffleArray([...alliesList]);
 
-	for (const ally of shuffledAllies) {
-		// Check if the ally needs power
-		if (getRealPower(ally) < 50 && friendlyPlayer(ally) && isPlayerAlive(ally)) {
-			let powerToDonate;
+    for (const ally of shuffledAllies) {
+        // Check if the ally needs power
+        if (getRealPower(ally) < 50 && friendlyPlayer(ally) && isPlayerAlive(ally)) {
+            let powerToDonate;
 
-			// Calculate power to donate based on current power levels
-			if (currentPower >= 15000) {
-				powerToDonate = currentPower / 3.5;
-			} else if (currentPower >= 10000) {
-				powerToDonate = currentPower / 3;
-			} else if (currentPower >= 5000) {
-				powerToDonate = currentPower / 2.5;
-			} else {
-				continue; // Skip if not enough power to donate
-			}
+            // Calculate power to donate based on current power levels
+            if (currentPower >= 15000) {
+                powerToDonate = currentPower / 3.5;
+            } else if (currentPower >= 10000) {
+                powerToDonate = currentPower / 3;
+            } else if (currentPower >= 5000) {
+                powerToDonate = currentPower / 2.5;
+            } else {
+                continue; // Skip if not enough power to donate
+            }
 
-			// Ensure donation will not drop below 5000 power
-			if (currentPower - powerToDonate < 5000) {
-				continue; // Skip this ally if donation would drop power too low
-			}
+            // Ensure donation will not drop below 5000 power
+            if (currentPower - powerToDonate < 5000) {
+                continue; // Skip this ally if donation would drop power too low
+            }
 
-			// Donate power to the ally
-			donatePower(powerToDonate, ally);
-			chat(ally, `I've sent you: ${powerToDonate.toFixed(2)} power to help you out.`);
+            // Donate power to the ally
+            donatePower(powerToDonate, ally);
+            chat(ally, `I've sent you: ${powerToDonate.toFixed(2)} power to help you out.`);
 
-			// Update current power after donation
-			currentPower -= powerToDonate;
+            // Update current power after donation
+            currentPower -= powerToDonate;
 
-			// Exit loop after donating to a random ally
-			break;
-		}
-	}
+            // Exit loop after donating to a random ally
+            break;
+        }
+    }
 }
 
 
+function checkForDefeatedAllies() {
+	const defeatedAllies = getDefeatedAllyPlayersData()
+
+	for (const ally of defeatedAllies) {
+
+		const truckForAlly = enumDroid(me, DROID_CONSTRUCT)[0]
+    
+        if (donateObject(truckForAlly, ally)) {
+            chat(ALLIES, `${ally.name} ` + "I've sent you a truck :P")
+        }
+	}
+}

@@ -45,17 +45,13 @@ function produceDroids() {
                 if (FAC_LIST[i] === FACTORY_STAT) {
 
                     // Standard factories: Build trucks or attackers
-                    if (enumGroup(buildersGroup).length + virtualTrucks < MIN_BASE_TRUCKS) {
+                    if (numTrucks + virtualTrucks < MIN_BASE_TRUCKS) {
                         produceBuilder(factory); // Build a truck
                     } else if (countStruct(POW_GEN_STAT)) {
                         produceTank(factory); // Build an attacker unit if power generator exists
 
-                        const sensorCount = enumDroid(me, DROID_SENSOR).length
-
-                        chat(ALLIES, sensorCount)
-
                         // Occasionally build sensors
-						if (random(100) < createSensorProbability() && sensorCount < 3) {
+						if (random(100) < createSensorProbability()) {
 							produceSensors(factory);
 						}
                     }
@@ -97,11 +93,18 @@ function produceTank(factory) {
     const ANTIPERSONELL_WEAPON_PROBABILITY = 60
     const ANTITANK_WEAPON_PROBABILITY = 40
     const THERMAL_BODY_PROBABILITY = checkFlameWeapons()
+    const BUNKER_BUSTER_PROBABILITY = isMyBaseInTrouble ? 0 : checkCurrentEnemyDefenses()
+    const HOWITZERS_WEAPON_PROBABILITY = checkLongRangeSupport()
 
     let FAST_PROP_PROBABILITY = 0
 
     if (isSeaMap === false) {
         FAST_PROP_PROBABILITY = checkTankKillerWeapons()
+    }
+
+    // When dragon is available, try a chance at using EMP-Cannon as secondary.
+	if (componentAvailable("Body14SUP") && componentAvailable("EMP-Cannon")) {
+        secondWeapon = "EMP-Cannon";
     }
 
     if (random(100) < THERMAL_BODY_PROBABILITY) {
@@ -116,15 +119,19 @@ function produceTank(factory) {
         firstWeapon = MACHINEGUN_WEAPON_LIST;
     } else if (random(100) < ANTITANK_WEAPON_PROBABILITY) {
         firstWeapon = ROCKET_WEAPON_LIST;
+    } else if (random(100) < BUNKER_BUSTER_PROBABILITY) {
+        firstWeapon = BUNKER_BUSTER_WEAPON
+        secondWeapon = BUNKER_BUSTER_WEAPON
+        tankProp = "hover01"
+    } else if (random(100) < HOWITZERS_WEAPON_PROBABILITY) {
+        firstWeapon = HOWITZERS_WEAPON_LIST
+        secondWeapon = HOWITZERS_WEAPON_LIST
+        tankProp = "hover01"
+        tankBody = TANK_MEDIUM_BODY_LIST
     }
     
     if (isSeaMap === true) {
         tankProp = "hover01"
-    }
-
-    // When dragon is available, try a chance at using EMP-Cannon as secondary.
-	if (componentAvailable("Body14SUP") && componentAvailable("EMP-Cannon")) {
-        secondWeapon = "EMP-Cannon";
     }
 
     return createDroid(factory, "Attacker", tankBody, tankProp, firstWeapon, secondWeapon)
@@ -177,6 +184,12 @@ function createDroid(factory, templateName, body, propulsion, turret1, turret2) 
 
 // Build sensors according to the artillery number of the team, with a probability between a min of 3% and a max of 13%.
 function createSensorProbability() {
+    const sensorCount = enumDroid(me, DROID_SENSOR).length
+
+    if (sensorCount >= 3) {
+        return 0
+    }
+
     const teamRippleNumber = countStruct("Emplacement-HvART-pit", ALLIES) 
                            + countStruct("Emplacement-Rocket06-IDF", ALLIES);
 
@@ -204,7 +217,7 @@ function recycleOldBuilders() {
 		return
 	}
 
-    const buildersToRecycle = enumGroup(buildersGroup).filter(builder => builder.propulsion != "hover01")
+    const buildersToRecycle = enumDroid(me, DROID_CONSTRUCT).filter(builder => builder.propulsion != "hover01")
 
     if (buildersToRecycle.length > 0) {
         buildersToRecycle.forEach(builder => {
@@ -213,14 +226,18 @@ function recycleOldBuilders() {
     }
 }
 
-// Check if we have too many trucks
+// Check if we have too many trucks and recycle excess ones
 function checkTrucksCount() {
-    const builders = enumGroup(buildersGroup); // Retrieve all builders
-    const excessBuilders = builders.slice(MAX_BASE_TRUCKS); // Get builders exceeding the limit
+    const builders = enumDroid(me, DROID_CONSTRUCT); // Get all builder droids
+    const excessCount = builders.length - MAX_BASE_TRUCKS;
 
-    // Recycle excess builders
-    excessBuilders.forEach(builder => {
-        orderDroid(builder, DORDER_RECYCLE);
-    });
+    if (excessCount > 0) {
+        const excessBuilders = builders.slice(-excessCount);
+
+        // Recycle excess builders
+        excessBuilders.forEach(builder => {
+            orderDroid(builder, DORDER_RECYCLE);
+        });
+    }
 }
 

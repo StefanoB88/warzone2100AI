@@ -148,6 +148,12 @@ const FUNDAMENTALS_FIRE_WEAPON = [
 	"R-Wpn-HeavyPlasmaLauncher", // Heavy Plasma Launcher
 ]
 
+const FUNDAMENTALS_HOWITZER_WEAPON = [
+	"R-Wpn-HvyHowitzer", // Ground shaker
+	"R-Wpn-Howitzer03-Rot", // Hellstorm
+	"R-Wpn-HowitzerMk1", // Howitzer
+]
+
 const FUNDAMENTALS_DEFENCE_T1 = [
 	"R-Defense-IDFRocket", // Ripple Rocket Battery
 	"R-Defense-Super-Cannon", // Cannon Fortress

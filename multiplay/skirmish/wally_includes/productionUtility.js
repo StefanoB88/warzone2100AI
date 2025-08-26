@@ -1,9 +1,9 @@
 // CHOICES ARE MADE FROM TOP TO BOTTOM !!!
 
 const BUILDER_BODY_LIST = [
-	"Body10MBT", // vengeance
-    "Body7ABT", // retribution
-    "Body6SUPP", // panther
+	"Body3MBT", // Retaliation
+    "Body2SUP", // Leopard
+    "Body4ABT", // Bug
     "Body1REC", // viper
 ]
 
@@ -13,12 +13,11 @@ const BUILDER_PROP_LIST = [
 ]
 
 const SCANNER_BODY_LIST = [
-	"Body13SUP", // Wyvern
 	"Body7ABT", // Retribution
 	"Body3MBT",  // Retaliation
-	"Body12SUP", // Mantis
 	"Body2SUP", // Leopard
-	"Body5REC", // cobra
+	"Body4ABT", // Bug
+	"Body1REC", // viper
 ]
 
 // ========================
@@ -28,10 +27,19 @@ const TANK_BODY_LIST = [
 	"Body14SUP", // dragon
 	"Body10MBT", // vengeance
 	"Body9REC", // Tiger
-	"Body6SUPP", // panther
 	"Body11ABT", // python
 	"Body5REC", // cobra
 	"Body1REC", // viper
+];
+
+// ========================
+// TANK MEDIUM BODY SECTION
+// ========================
+const TANK_MEDIUM_BODY_LIST = [
+	"Body7ABT", // Retribution
+	"Body6SUPP", // Panther
+	"Body8MBT", // Scorpion
+	"Body5REC", // Cobra
 ];
 
 const TANK_BODY_LIST_THERMIC = [
@@ -54,6 +62,16 @@ const TANK_PROP_LIST = [
 ];
 
 // ========================
+// TANK HOWITZERS SECTION
+// ========================
+const HOWITZERS_WEAPON_LIST = [
+	"Howitzer150Mk1", // Ground Shaker
+	"Howitzer03-Rot", // Hellstorm
+	"Howitzer-Incendiary", // Howitzer Incendiary
+	"Howitzer105Mk1" // Howitzer
+];
+
+// ========================
 // TANK ROCKET SECTION
 // ========================
 const ROCKET_WEAPON_LIST = [
@@ -62,6 +80,13 @@ const ROCKET_WEAPON_LIST = [
 	"Rocket-LtA-T", // Lancer
 	"Rocket-MRL", // MRL
 	"Rocket-Pod" // Rocket Pod
+];
+
+// ========================
+// TANK BUNKER BUSTER
+// ========================
+const BUNKER_BUSTER_WEAPON = [
+	"Rocket-BB",
 ];
 
 // ========================
@@ -107,7 +132,8 @@ const CYBORG_HEAVY_LASER = [
 ];
 
 const CYBORG__LIGHT_MACHINEGUN = [
-	"CyborgChaingun" // Chaingun
+	"CyborgRotMG", // Heavy machinegun
+	"CyborgChaingun" // Machinegun
 ];
 
 // ========================
@@ -123,6 +149,6 @@ const CYBORG_FLAMERS = [
 // ========================
 const VTOL_ROCKETS = [
 	"Missile-VTOL-AT", // scourge
-	"Rocket-VTOL-HvyA-T", //tank killer
+	"Rocket-VTOL-HvyA-T", // tank killer
 	"Rocket-VTOL-LtA-T", // lancer
 ];

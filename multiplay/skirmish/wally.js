@@ -16,30 +16,32 @@ const LASERLINK_STAT = "A0LasSatCommand";
 const ELECTRONIC_DEFENSES = ["Sys-SpyTower", "WallTower-EMP", "Emplacement-MortarEMP"];
 
 // -- globals
-const MIN_BASE_TRUCKS = 8;
-const MAX_BASE_TRUCKS = 10;
+const MIN_BASE_TRUCKS = 10;
+const MAX_BASE_TRUCKS = 15;
 const MIN_BUILD_POWER = 30;
 const MIN_RESEARCH_POWER = -50;
 const MIN_PRODUCTION_POWER = 50;
 const BASE_THREAT_RANGE = Math.ceil(17 + (mapWidth + mapHeight) / 2 / 20);
 var BASE = startPositions[me];
-var buildersGroup;
+var baseBuildersGroup;
+var defensesBuildersGroup;
 var attackerGroup;
+var bunkerBusterGroup;
 var researchDone;
 var currentlyDead;
 var isSeaMap; // Used to determine if it is a hover map.
 var isMyBaseInTrouble = false; // Used to determine if the base is in danger.
 var isHighOilMap;
-
+var useBunkerBuster = false;
 var enemiesHaveVtol;
 var areAllEnemiesDead = false;
-var isHelpingAlly = false
+var isHelpingAlly = false;
 
 /**
  * @typedef {Object} PlayerData
  * @property {string} difficulty - The player's difficulty level
  * @property {string} colour - The player's color
- * @property {string} position - The player's position
+ * @property {string} position - The player's index
  * @property {boolean} isAI - Whether the player is AI-controlled
  * @property {boolean} isHuman - Whether the player is human
  * @property {string} name - The player's name
@@ -50,13 +52,13 @@ var isHelpingAlly = false
 /** @type {PlayerData[]} */
 var alliesList = [];
 var enemiesList = [];
+var currentHelpedAlly;
 
 /** @type {PlayerData} */
 var currentEnemy; // Current enemy Wally is attacking.
 var currentEnemyTarget; // Current enemy target Wally is attacking.
 
 var scavengerIndex = undefined;
-
 
 // Difficulty
 var reactionSpeedDelay = 0

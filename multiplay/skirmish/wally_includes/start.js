@@ -3,8 +3,10 @@ function eventStartLevel() {
 	chat(ALLIES, "Hello! I'm Wally, your best defensive ally. I'll help you win this game.")
 
 	// setup groups
-	buildersGroup = newGroup()
+	baseBuildersGroup = newGroup()
+	defensesBuildersGroup = newGroup()
 	attackerGroup = newGroup()
+	bunkerBusterGroup = newGroup()
 
 	enumDroid(me).forEach(droid => {
 		eventDroidBuilt(droid);
@@ -33,17 +35,28 @@ function eventStartLevel() {
 	// Set the timer call randomly so as not to calculate in the same tick.
 	setTimer("produceDroids", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))); // 1,5 Seconds
 	setTimer("research", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
-	setTimer("build", reactionSpeedDelay + 3000 + ((1 + random(30)) * random(10))) // 3 Seconds
-	setTimer("attack", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
+	setTimer("build", reactionSpeedDelay + 1500 + ((1 + random(14)) * random(456))) // 1,5 Seconds
+	setTimer("attack", reactionSpeedDelay + 1000 + ((1 + random(30)) * random(10))) // 1 Second
 	setTimer("isHighOilMap", reactionSpeedDelay + 45000 + ((1 + random(30)) * random(10))) // 45 Seconds
-	setTimer("setCurrentEnemy", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
+	setTimer("setCurrentEnemy", reactionSpeedDelay + 180000 + ((1 + random(30)) * random(10))) // 3 Minutes
 	setTimer("lookForOil", reactionSpeedDelay + 2000 + ((1 + random(30)) * random(10))) // 2 Seconds
-	setTimer("myBaseInTrouble", reactionSpeedDelay + 10000 + ((1 + random(30)) * random(10))) // 10 Seconds
+	setTimer("myBaseInTrouble", reactionSpeedDelay + 5000 + ((1 + random(30)) * random(10))) // 5 Seconds
 	setTimer("checkAllyBaseInTrouble", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
 	setTimer("recycleOldBuilders", reactionSpeedDelay + 20000 + ((1 + random(30)) * random(10))) // 20 Seconds
 	setTimer("checkTrucksCount", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("donateOil", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("checkAllies", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
+	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(1500)) * random(2000))) // 2 Minutes
+	setTimer("swapBuildersRole", reactionSpeedDelay + 30000 + ((1 + random(30)) * random(10))) // 30 Seconds
+}
+
+// BaseBuilders should be at least 5, the rest are focused at building defenses
+function swapBuildersRole() {
+	const builders = enumDroid(me, DROID_CONSTRUCT);
+	
+	for(const builder of builders) {
+		eventDroidBuilt(builder)
+	}
 }
 
 // Check and update the alive allies
@@ -86,6 +99,8 @@ function shutdownScripts() {
 	removeTimer("checkTrucksCount")
 	removeTimer("donateOil")
 	removeTimer("checkAllies")
+	removeTimer("checkForDefeatedAllies")
+	removeTimer("swapBuildersRole")
 }
 
 function setDifficulty() {
@@ -118,7 +133,18 @@ function eventDroidBuilt(droid) {
 	}
 
 	if (droid.droidType === DROID_CONSTRUCT) {
-		groupAdd(buildersGroup, droid)
+		if (enumGroup(baseBuildersGroup).length >= 5) {
+			groupAdd(defensesBuildersGroup, droid)
+		} else {
+			groupAdd(baseBuildersGroup, droid)
+		}
+
+		return;
+	}
+
+	if (droid.droidType === DROID_WEAPON && droid.weapons?.[0]?.name === BUNKER_BUSTER_WEAPON[0]) {
+		groupAdd(bunkerBusterGroup, droid)
+		retreatToBase([droid])
 		return;
 	}
 

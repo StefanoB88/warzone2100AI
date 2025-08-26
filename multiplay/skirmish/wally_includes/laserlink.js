@@ -18,7 +18,10 @@ function eventStructureReady(structure) {
 		const obj = getObject(struct.typeInfo, struct.playerInfo, struct.idInfo);
 
 		activateStructure(structure, obj);
-		chat(ALL_PLAYERS, `${getPlayerName(obj.player)}... Laser is ready, I aim it steady!`);
+		
+		const playerName = playerData[obj.player].name
+		const enemyPlayerName = playerName ?? "Hmmm"
+		chat(ALL_PLAYERS, `${enemyPlayerName}... Laser is ready, I aim it steady!`);
 	} else {
 		queue("eventStructureReady", RETRY_TIME, structure);
 	}

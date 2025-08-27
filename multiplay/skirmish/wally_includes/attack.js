@@ -33,40 +33,43 @@ function attackEnemy(attackerDroids) {
         sortFunc = sortByDistToBase;
     }
 
-    const enemyDroids = enumDroid(enemyIndex, DROID_WEAPON, false)
+    const enemyDroid = enumDroid(enemyIndex, DROID_WEAPON, false)
         .concat(enumDroid(enemyIndex, DROID_CYBORG, false))
-        .sort(sortFunc);
+        .sort(sortFunc)[0];
 
-    const enemyTrucks = enumDroid(enemyIndex, DROID_CONSTRUCT, false).sort(sortByDistToBase);
+    const enemyTruck = enumDroid(enemyIndex, DROID_CONSTRUCT, false)
+        .sort(sortByDistToBase)[0];
 
-    const enemyDefenses = enumStruct(enemyIndex, DEFENSE).sort(sortByDistToBase);
+    const enemyDefenses = enumStruct(enemyIndex, DEFENSE)
+        .sort(sortByDistToBase);
     const closestDefense = enemyDefenses[0];
 
-    if (enemyDroids[0]) {
-        currentEnemyTarget = enemyDroids[0];
-    } else if (enemyTrucks[0]) {
-        currentEnemyTarget = enemyTrucks[0];
-    } else {
-        // Priority 1: Find a factory
+    const enemyDerrick = findNearestDerrick(enemyIndex);
+
+    // Get closest among droid, truck, derrick
+    const basePos = BASE;
+    currentEnemyTarget = [enemyDroid, enemyTruck, enemyDerrick]
+        .filter(Boolean)
+        .reduce((closest, obj) => {
+            return distBetweenTwoPoints(basePos.x, basePos.y, obj.x, obj.y) <
+                distBetweenTwoPoints(basePos.x, basePos.y, closest.x, closest.y)
+                ? obj
+                : closest;
+        });
+
+    // Fallback if no droid/truck/derrick found
+    if (!currentEnemyTarget) {
         const enemyFactory = findNearestFactory(enemyIndex);
         if (enemyFactory) {
             currentEnemyTarget = enemyFactory;
+        } else if (closestDefense) {
+            currentEnemyTarget = closestDefense;
         } else {
-            // Priority 2: Find a derrick
-            const enemyDerrick = findNearestDerrick(enemyIndex);
-            if (enemyDerrick) {
-                currentEnemyTarget = enemyDerrick;
-            } else {
-                // Priority 3: Find a structure
-                if (closestDefense) {
-                    currentEnemyTarget = closestDefense
-                } else {
-                    return; // No structures or droids remain
-                }
-            }
+            return; // No structures or droids remain
         }
     }
 
+    // Destroy defenses that are too close to the base
     if (closestDefense && isNearBase(closestDefense.x, closestDefense.y)) {
         currentEnemyTarget = closestDefense;
     }
@@ -155,7 +158,7 @@ function filterDroidsByDistance(attackerDroids, enemyTarget) {
         HOWITZERS: componentAvailable("Howitzer150Mk1") ? 35 : 25
     };
 
-    
+
     const weaponToLimit = new Map([
         ...ROCKET_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.ROCKETS]),
         ...MACHINEGUN_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.MACHINEGUN]),
@@ -265,7 +268,7 @@ function findNearestFactory(player) {
 // Return closest player derrick ID
 function findNearestDerrick(player) {
     let target;
-    let derr = enumStruct(player, DERRICK_STAT).sort(sortByDistToBase);
+    let derr = enumStruct(player, DERRICK_STAT, true).sort(sortByDistToBase);
 
     if (derr.length > 0) {
         target = derr[0];

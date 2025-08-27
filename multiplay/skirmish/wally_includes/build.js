@@ -12,15 +12,15 @@ function build() {
 
 	if (defensesBuilders.length >= 1 && getRealPower() > MIN_BUILD_POWER) {
 		const def = returnBestDefense();
-    	if (def !== null) {
+		if (def !== null) {
 			grabTrucksAndBuild(def, BASE, defensesBuilders);
-    	}
+		}
 	}
 
 	if (checkUncompletedStructures()) {
 		return
 	}
-	
+
 	if (baseMaintenance()) {
 		return
 	}
@@ -64,25 +64,25 @@ function buildBasicBase() {
 
 // Check if there are uncompleted structures near the base
 function checkUncompletedStructures() {
-    let hasAssignedTask = false;
+	let hasAssignedTask = false;
 
-    // Find uncompleted structures near the base
-    let structlist = enumStruct(me).filter((structure) => (
-        structure.status !== BUILT &&
-        distBetweenTwoPoints(BASE.x, BASE.y, structure.x, structure.y) < 40
-    ));
+	// Find uncompleted structures near the base
+	let structlist = enumStruct(me).filter((structure) => (
+		structure.status !== BUILT &&
+		distBetweenTwoPoints(BASE.x, BASE.y, structure.x, structure.y) < 40
+	));
 
-    if (structlist.length === 0) {
-        return false;
-    }
+	if (structlist.length === 0) {
+		return false;
+	}
 
-    // Get idle trucks for the first uncompleted structure
-    const idleTrucks = findIdleTrucks(structlist[0], defensesBuildersGroup);
+	// Get idle trucks for the first uncompleted structure
+	const idleTrucks = findIdleTrucks(structlist[0], defensesBuildersGroup);
 
 	const halfCount = Math.floor(idleTrucks.length / 2); // Calculate half
-    const droidsToCompleteStructure = idleTrucks.slice(-halfCount)
+	const droidsToCompleteStructure = idleTrucks.slice(-halfCount)
 
-    if (droidsToCompleteStructure.length && structlist.length) {
+	if (droidsToCompleteStructure.length && structlist.length) {
 		structlist = structlist.sort(sortByDistToBase);
 		for (let j = 0; j < droidsToCompleteStructure.length; ++j) {
 			if (orderDroidObj(droidsToCompleteStructure[j], DORDER_HELPBUILD, structlist[0])) {
@@ -91,7 +91,7 @@ function checkUncompletedStructures() {
 		}
 	}
 
-    return hasAssignedTask;
+	return hasAssignedTask;
 }
 
 // Build modules and check research completion.
@@ -115,7 +115,7 @@ function baseMaintenance() {
 	const modList = [
 		{ "mod": "A0PowMod1", "amount": 1, "structure": POW_GEN_STAT },
 		{ "mod": "A0ResearchModule1", "amount": 1, "structure": RES_LAB_STAT },
-		{ "mod": "A0FacMod1", "amount": 2, "structure": FACTORY_STAT },		
+		{ "mod": "A0FacMod1", "amount": 2, "structure": FACTORY_STAT },
 		{ "mod": "A0FacMod1", "amount": 2, "structure": VTOL_FACTORY_STAT }
 	];
 
@@ -143,7 +143,7 @@ function baseMaintenance() {
 
 		// Find all idle trucks
 		const idleTrucks = findIdleTrucks();
-	
+
 		// Iterate through each idle truck to find a suitable build location
 		for (const truck of idleTrucks) {
 			// Check if the truck can help with building at the selected location
@@ -206,94 +206,94 @@ function buildFundamentals() {
 	// "All fundamental buildings built -- proceed to build defenses"
 	if (buildDefenses()) {
 		return;
-	}	
+	}
 
 	return false
 }
 
 function buildDefensesForAllies() {
-    // Count all defenses near my base only once
-    const myDefensesCount = enumRange(BASE.x, BASE.y, BASE_THREAT_RANGE, me, true)
-        .filter((obj) => obj.stattype === DEFENSE).length;
+	// Count all defenses near my base only once
+	const myDefensesCount = enumRange(BASE.x, BASE.y, BASE_THREAT_RANGE, me, true)
+		.filter((obj) => obj.stattype === DEFENSE).length;
 
-    // Determine the maximum number of defenses to build for allies
-    const maxDefensesForAllies = myDefensesCount >= 100 ? 100 : 30;
+	// Determine the maximum number of defenses to build for allies
+	const maxDefensesForAllies = myDefensesCount >= 100 ? 100 : 30;
 
-    // If I have fewer than 30 defenses, don't build any
-    if (myDefensesCount < 30) {
-        return false;
-    }
+	// If I have fewer than 30 defenses, don't build any
+	if (myDefensesCount < 30) {
+		return false;
+	}
 
-    // Process each ally
-    for (const ally of alliesList) {
-        // Get the ally's base position
-        const allyBasePosition = enumStruct(ally.position, PLAYER_HQ_STAT)[0] ?? startPositions[ally.position];
+	// Process each ally
+	for (const ally of alliesList) {
+		// Get the ally's base position
+		const allyBasePosition = enumStruct(ally.position, PLAYER_HQ_STAT)[0] ?? startPositions[ally.position];
 
-        // If an ally is too far or if my base is in trouble, skip this ally
-        if (distBetweenTwoPoints(BASE.x, BASE.y, allyBasePosition.x, allyBasePosition.y) > 60 || isMyBaseInTrouble) {
-            continue; // Skip ally and check next one
-        }
+		// If an ally is too far or if my base is in trouble, skip this ally
+		if (distBetweenTwoPoints(BASE.x, BASE.y, allyBasePosition.x, allyBasePosition.y) > 60 || isMyBaseInTrouble) {
+			continue; // Skip ally and check next one
+		}
 
-        // Combine defenses from both my base and the ally's base in a single `enumRange` call
-        const allAlliedDefenses = enumRange(
-            allyBasePosition.x, allyBasePosition.y, BASE_THREAT_RANGE, ally, true
-        )
-        .concat(
-            enumRange(allyBasePosition.x, allyBasePosition.y, BASE_THREAT_RANGE, me, true)
-        )
-        .filter((obj) => obj.stattype === DEFENSE).length;
+		// Combine defenses from both my base and the ally's base in a single `enumRange` call
+		const allAlliedDefenses = enumRange(
+			allyBasePosition.x, allyBasePosition.y, BASE_THREAT_RANGE, ally, true
+		)
+			.concat(
+				enumRange(allyBasePosition.x, allyBasePosition.y, BASE_THREAT_RANGE, me, true)
+			)
+			.filter((obj) => obj.stattype === DEFENSE).length;
 
-        // Skip if the ally already has enough defenses
-        if (allAlliedDefenses >= maxDefensesForAllies) {
-            continue;
-        }
+		// Skip if the ally already has enough defenses
+		if (allAlliedDefenses >= maxDefensesForAllies) {
+			continue;
+		}
 
-        // If there's enough power, build a defense
-        if (getRealPower() > MIN_BUILD_POWER) {
-            const def = returnBestDefense();
-            if (def !== null) {
-                grabTrucksAndBuild(def, allyBasePosition);
-                return true; // Exit once a defense is built
-            }
-        } else {
-            return false; // Not enough power to build defenses
-        }
-    }
+		// If there's enough power, build a defense
+		if (getRealPower() > MIN_BUILD_POWER) {
+			const def = returnBestDefense();
+			if (def !== null) {
+				grabTrucksAndBuild(def, allyBasePosition);
+				return true; // Exit once a defense is built
+			}
+		} else {
+			return false; // Not enough power to build defenses
+		}
+	}
 
-    return false; // Return false if no defenses were built for allies
+	return false; // Return false if no defenses were built for allies
 }
 
 let lastAttemptTime = 0;
 const RETRY_DELAY = 20000; // 20-second delay in milliseconds
 
 function buildDefenses() {
-    // If the game time is less than the retry time, exit early
-    if (gameTime < lastAttemptTime) {
-        return false;
-    }
+	// If the game time is less than the retry time, exit early
+	if (gameTime < lastAttemptTime) {
+		return false;
+	}
 
-    // If not enough power is available, set the retry time and exit
-    if (getRealPower() < MIN_BUILD_POWER) {
-        return false;
-    }
+	// If not enough power is available, set the retry time and exit
+	if (getRealPower() < MIN_BUILD_POWER) {
+		return false;
+	}
 
-    // If the ripple is unavailable, set the a delay time
-    if (!isStructureAvailable("Emplacement-Rocket06-IDF")) {
-        lastAttemptTime = gameTime + RETRY_DELAY;
-    }
+	// If the ripple is unavailable, set the a delay time
+	if (!isStructureAvailable("Emplacement-Rocket06-IDF")) {
+		lastAttemptTime = gameTime + RETRY_DELAY;
+	}
 
-    // If I'm already building defenses for the allies, exit
-    if (buildDefensesForAllies()) {
-        return true;
-    }
+	// If I'm already building defenses for the allies, exit
+	if (buildDefensesForAllies()) {
+		return true;
+	}
 
-    // Build defenses if possible
-    const def = returnBestDefense();
-    if (def !== null) {
-        return grabTrucksAndBuild(def);
-    }
+	// Build defenses if possible
+	const def = returnBestDefense();
+	if (def !== null) {
+		return grabTrucksAndBuild(def);
+	}
 
-    return false; // No defenses built
+	return false; // No defenses built
 }
 
 
@@ -372,52 +372,52 @@ function factoryBuildOrder() {
 
 // Build the research labs. Attempts to build up to a certain number based on derricks.
 function buildResearchLabs() {
-    if (researchDone) {
-        return false;
-    }
+	if (researchDone) {
+		return false;
+	}
 
-    const derrCount = countStruct(DERRICK_STAT);
-    let amount = 3;
+	const derrCount = countStruct(DERRICK_STAT);
+	let amount = 3;
 
-    // Determine the number of research labs to build
-    if (derrCount >= 26) {
-        amount = 5;
-    } else if (derrCount >= 12) {
-        amount = 4;
-    } else if (derrCount >= 8) {
-        amount = 3;
-    }
+	// Determine the number of research labs to build
+	if (derrCount >= 26) {
+		amount = 5;
+	} else if (derrCount >= 12) {
+		amount = 4;
+	} else if (derrCount >= 8) {
+		amount = 3;
+	}
 
-    const currentLabs = countStruct(RES_LAB_STAT);
+	const currentLabs = countStruct(RES_LAB_STAT);
 
-    // Attempt to build research labs until the desired amount is reached
-    for (let i = currentLabs; i < amount; ++i) {
-        if (grabTrucksAndBuild(RES_LAB_STAT)) {
-            return true;
-        }
-    }
+	// Attempt to build research labs until the desired amount is reached
+	for (let i = currentLabs; i < amount; ++i) {
+		if (grabTrucksAndBuild(RES_LAB_STAT)) {
+			return true;
+		}
+	}
 
-    return false;
+	return false;
 }
 
 
 // Demolish old defenses if an upgrade is available
 function demolishOldDefenses() {
-    const upgradeMap = [
-        { new: "Emplacement-Rocket06-IDF", old: WEAK_DEFENSES }, 
-        { new: "Sys-SensoTowerWS", old: ["Sys-SensoTower02"] }, 
-        { new: "Emplacement-HvART-pit", old: ["Emplacement-Rocket06-IDF"] }, 
-        { new: "X-Super-MassDriver", old: ["X-Super-Cannon"] }
-    ];
+	const upgradeMap = [
+		{ new: "Emplacement-Rocket06-IDF", old: WEAK_DEFENSES },
+		{ new: "Sys-SensoTowerWS", old: ["Sys-SensoTower02"] },
+		{ new: "Emplacement-HvART-pit", old: ["Emplacement-Rocket06-IDF"] },
+		{ new: "X-Super-MassDriver", old: ["X-Super-Cannon"] }
+	];
 
-    upgradeMap.forEach(({ new: newStruct, old: oldStructs }) => {
-        if (isStructureAvailable(newStruct)) {
-            oldStructs
-                .flatMap(type => enumStruct(me, type))
-                .sort(sortByDistToBase)  // sort by distance
-                .forEach(demolishThis);  // demolish each structure
-        }
-    })
+	upgradeMap.forEach(({ new: newStruct, old: oldStructs }) => {
+		if (isStructureAvailable(newStruct)) {
+			oldStructs
+				.flatMap(type => enumStruct(me, type))
+				.sort(sortByDistToBase)  // sort by distance
+				.forEach(demolishThis);  // demolish each structure
+		}
+	})
 }
 
 // Demolish useless cyborg factories
@@ -434,16 +434,16 @@ function numUnusedDerricks() {
 
 // Function to check if more derricks are needed due to unused power generators
 function needMoreDerricks() {
-    var powGenCount = countStruct(POW_GEN_STAT, me);
-    var derrickCount = countStruct(DERRICK_STAT, me);
+	var powGenCount = countStruct(POW_GEN_STAT, me);
+	var derrickCount = countStruct(DERRICK_STAT, me);
 
-    var minDerricksNeeded = powGenCount * 5; // A power generator can support 4 derricks but we set 5 to be safe
+	var minDerricksNeeded = powGenCount * 5; // A power generator can support 4 derricks but we set 5 to be safe
 
-    if (derrickCount >= minDerricksNeeded) {
-        return false;
-    }
+	if (derrickCount >= minDerricksNeeded) {
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
 // Return all the trucks that do nothing
@@ -494,10 +494,10 @@ function grabTrucksAndBuild(structure, base, trucks) {
 		return false
 	}
 
-    // Check if the structure is available to build
-    if (!isStructureAvailable(structure)) {
-        return false;
-    }
+	// Check if the structure is available to build
+	if (!isStructureAvailable(structure)) {
+		return false;
+	}
 
 	let idleTrucks;
 
@@ -507,29 +507,29 @@ function grabTrucksAndBuild(structure, base, trucks) {
 		// Find all idle trucks
 		idleTrucks = findIdleTrucks();
 	}
-    
-    if (idleTrucks.length === 0) {
-        return false; // No trucks available
-    }
 
-    let buildSuccessful = false;
-    const maxBlockingTiles = 0;
+	if (idleTrucks.length === 0) {
+		return false; // No trucks available
+	}
 
-    // Iterate through each idle truck to find a suitable build location
-    for (const truck of idleTrucks) {
-        const buildLocation = pickStructLocation(truck, structure, base.x, base.y, maxBlockingTiles);
+	let buildSuccessful = false;
+	const maxBlockingTiles = 0;
 
-        // Check if the truck can help with building at the selected location
-        if (buildLocation && canDroidHelp(truck, buildLocation.x, buildLocation.y)) {
-            const buildOrdered = orderDroidBuild(truck, DORDER_BUILD, structure, buildLocation.x, buildLocation.y);
+	// Iterate through each idle truck to find a suitable build location
+	for (const truck of idleTrucks) {
+		const buildLocation = pickStructLocation(truck, structure, base.x, base.y, maxBlockingTiles);
 
-            if (buildOrdered) {
-                buildSuccessful = true;
-            }
-        }
-    }
+		// Check if the truck can help with building at the selected location
+		if (buildLocation && canDroidHelp(truck, buildLocation.x, buildLocation.y)) {
+			const buildOrdered = orderDroidBuild(truck, DORDER_BUILD, structure, buildLocation.x, buildLocation.y);
 
-    return buildSuccessful;
+			if (buildOrdered) {
+				buildSuccessful = true;
+			}
+		}
+	}
+
+	return buildSuccessful;
 }
 
 function canDroidHelp(mydroid, bx, by) {
@@ -547,58 +547,63 @@ function lookForOil() {
 		return false;
 	}
 
-	const UNSAFE_AREA_RANGE = 30; // Define the range for unsafe areas
+	const UNSAFE_AREA_RANGE = 10; 
 	let success = false;
 
-	// Get allied base positions
-	let allyBasePositions = alliesList.map((ally) => ally.base);
+	// Allied base positions
+	let allyBasePositions = alliesList.map((a) => a.base);
 
-	// Filter and sort oil resources
+	// Get all valid oils and sort by distance to base
 	let oils = enumFeature(ALL_PLAYERS, OIL_RES_STAT)
 		.filter((oil) => {
-			// Check if the oil is too close to any allied base
-			let tooCloseToAlly = allyBasePositions.some((base) =>
+			let tooClose = allyBasePositions.some(base =>
 				distBetweenTwoPoints(base.x, base.y, oil.x, oil.y) < 15
 			);
-
-			// Check if the oil is in an unsafe area
-			let isUnsafe = enumRange(oil.x, oil.y, UNSAFE_AREA_RANGE, ENEMIES, false)
+			let unsafe = enumRange(oil.x, oil.y, UNSAFE_AREA_RANGE, ENEMIES, false)
 				.filter(isUnsafeEnemyObject).length > 0;
-
-			return !tooCloseToAlly && !isUnsafe;
+			return !tooClose && !unsafe;
 		})
-		.sort(sortByDistToBase); // Sort by distance to base
+		.sort(sortByDistToBase); // sort by distance to base
 
-	// If no valid oils are found, exit early
-	if (oils.length === 0) {
-		return false;
+	if (oils.length === 0) return false;
+
+	// Get all available droids
+	let droids = enumGroup(baseBuildersGroup);
+
+	let bestDroid = null;
+	let bestDist = 99999;
+
+	// Loop through each oil
+	for (let i = 0; i < oils.length; i++) {
+		let oil = oils[i];
+		bestDroid = null;
+		bestDist = 99999;
+
+		// Find the closest available droid for this oil
+		for (let j = 0; j < droids.length; j++) {
+			let droid = droids[j];
+			if (!canDroidHelp(droid, oil.x, oil.y) || droid.busy || 
+				droid.order === DORDER_BUILD ||
+				droid.order === DORDER_LINEBUILD ||
+				droid.order === DORDER_RECYCLE) 
+			{
+				continue;
+			}
+
+			let dist = distBetweenTwoPoints(droid.x, droid.y, oil.x, oil.y);
+			if (dist < bestDist) {
+				bestDist = dist;
+				bestDroid = droid;
+			}
+		}
+
+		// Assign the closest droid to build on this oil
+		if (bestDroid) {
+			bestDroid.busy = true;
+			orderDroidBuild(bestDroid, DORDER_BUILD, DERRICK_STAT, oil.x, oil.y);
+			success = true;
+		}
 	}
-
-	let closestOil = oils[0]; // Select the closest valid oil
-
-	// Find the nearest available droid
-	let droids = enumGroup(baseBuildersGroup).filter((droid) =>
-		canDroidHelp(droid, closestOil.x, closestOil.y)
-	);
-
-	if (droids.length === 0) {
-		return false;
-	}
-
-	let closestDroid = droids.sort((a, b) =>
-		distBetweenTwoPoints(a.x, a.y, closestOil.x, closestOil.y) -
-		distBetweenTwoPoints(b.x, b.y, closestOil.x, closestOil.y)
-	)[0];
-
-	// Issue build order for the droid
-	success = orderDroidBuild(
-		closestDroid,
-		DORDER_BUILD,
-		DERRICK_STAT,
-		closestOil.x,
-		closestOil.y
-	);
 
 	return success;
 }
-

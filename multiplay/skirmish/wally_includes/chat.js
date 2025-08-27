@@ -4,12 +4,14 @@ function eventChat(from, to, message) {
         const ally = alliesList[from]
 
         if (to === me && myTrucksCount >= 5) {
-            const closestTrucksFromAlly = enumDroid(me, DROID_CONSTRUCT).sort((obj1, obj2) => {
-                return sortByDistToPlayerBase(obj1, obj2, from)
-            })
-    
-            if (donateObject(closestTrucksFromAlly[0], from)) {
-                chat(ALLIES, `${ally.name} ` + "I've sent you a truck")
+            const closestTrucksFromAlly = enumDroid(me, DROID_CONSTRUCT)
+                ?.sort((obj1, obj2) => sortByDistToPlayerBase(obj1, obj2, from));
+
+            // Check if there is at least 1 truck available
+            if (closestTrucksFromAlly && closestTrucksFromAlly.length > 0) {
+                if (donateObject(closestTrucksFromAlly[0], from)) {
+                    chat(ALLIES, `${ally.name} I've sent you a truck`);
+                }
             }
         } else {
             chat(ALLIES, `${ally.name} ` + "I'm sorry, I don't have so many trucks")

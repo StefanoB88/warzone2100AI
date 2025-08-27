@@ -41,7 +41,7 @@ function checkTankKillerWeapons() {
 function checkCurrentEnemyDefenses() {
     const enemyIndex = currentEnemy.position;
 
-    const currentEnemyDefenses = enumStruct(enemyIndex, DEFENSE).sort(sortByDistToBase)
+    const currentEnemyDefenses = enumStruct(enemyIndex, DEFENSE)
 
     let probability = currentEnemyDefenses.length / useBunkerBuster ? 1.2 : 2;
 

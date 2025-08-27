@@ -1,7 +1,4 @@
 function eventStructureReady(structure) {
-    // If no enemy structure was found, try again in 1 minute
-	const RETRY_TIME = 60000 + random(25) + random(50);
-
 	if (!structure) {
 		const LASER = enumStruct(me, LASERLINK_STAT);
 
@@ -11,6 +8,9 @@ function eventStructureReady(structure) {
 			return
 		}
 	}
+
+	// If no enemy structure was found, try again in 1 minute
+	const RETRY_TIME = 60000 + random(25) + random(50);
 
 	const struct = returnClosestEnemyStructure();
 
@@ -28,25 +28,28 @@ function eventStructureReady(structure) {
 }
 
 function returnClosestEnemyStructure() {
-	let enemyIndex = currentEnemy.position;
+    let enemyIndex = currentEnemy.position;
 
-	if (enemyIndex === undefined) {
-		enemyIndex = getAliveEnemyPlayersData()[0].position;
-	}
-
-	if (enemyIndex !== undefined) {
-		let struct = enumStruct(enemyIndex, LASSAT)
-			.concat(enumStruct(enemyIndex, HQ))
-			.concat(enumStruct(enemyIndex, FACTORY))
-			.concat(enumStruct(enemyIndex, CYBORG_FACTORY))
-			.concat(enumStruct(enemyIndex, VTOL_FACTORY))
-			.concat(enumStruct(enemyIndex))
-
-		if (struct.length > 0) {
-			return objectInformation(struct[0]);
+    if (enemyIndex === undefined) {
+        const aliveEnemies = getAliveEnemyPlayersData();
+        if (!aliveEnemies || aliveEnemies.length === 0) {
+			return;
 		}
-	}
+        enemyIndex = aliveEnemies[0].position;
+    }
+
+    if (enemyIndex !== undefined) {
+        const structureTypes = [LASSAT, HQ, FACTORY, CYBORG_FACTORY, VTOL_FACTORY, null];
+
+        for (const type of structureTypes) {
+            const structs = type ? enumStruct(enemyIndex, type) : enumStruct(enemyIndex);
+            if (structs.length > 0) {
+                return objectInformation(structs[0]);
+            }
+        }
+    }
 }
+
 
 function objectInformation(object) {
 	return {

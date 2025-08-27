@@ -35,19 +35,19 @@ function eventStartLevel() {
 	// Set the timer call randomly so as not to calculate in the same tick.
 	setTimer("produceDroids", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))); // 1,5 Seconds
 	setTimer("research", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
-	setTimer("build", reactionSpeedDelay + 1500 + ((1 + random(14)) * random(456))) // 1,5 Seconds
+	setTimer("build", reactionSpeedDelay + 1500 + ((1 + random(14)) * random(46))) // 1,5 Seconds
 	setTimer("attack", reactionSpeedDelay + 1000 + ((1 + random(30)) * random(10))) // 1 Second
 	setTimer("isHighOilMap", reactionSpeedDelay + 45000 + ((1 + random(30)) * random(10))) // 45 Seconds
 	setTimer("setCurrentEnemy", reactionSpeedDelay + 180000 + ((1 + random(30)) * random(10))) // 3 Minutes
-	setTimer("lookForOil", reactionSpeedDelay + 2000 + ((1 + random(30)) * random(10))) // 2 Seconds
+	setTimer("lookForOil", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
 	setTimer("myBaseInTrouble", reactionSpeedDelay + 5000 + ((1 + random(30)) * random(10))) // 5 Seconds
 	setTimer("checkAllyBaseInTrouble", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
 	setTimer("recycleOldBuilders", reactionSpeedDelay + 20000 + ((1 + random(30)) * random(10))) // 20 Seconds
 	setTimer("checkTrucksCount", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("donateOil", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("checkAllies", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
-	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(1500)) * random(2000))) // 2 Minutes
-	setTimer("swapBuildersRole", reactionSpeedDelay + 30000 + ((1 + random(30)) * random(10))) // 30 Seconds
+	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(33)) * random(88))) // 2 Minutes
+	setTimer("swapBuildersRole", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
 }
 
 // BaseBuilders should be at least 5, the rest are focused at building defenses

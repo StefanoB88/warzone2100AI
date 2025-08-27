@@ -155,24 +155,34 @@ function filterDroidsByDistance(attackerDroids, enemyTarget) {
         HOWITZERS: componentAvailable("Howitzer150Mk1") ? 35 : 25
     };
 
-    attackerDroids.forEach((attackerDroid) => {
-        const distance = distBetweenTwoPoints(attackerDroid.x, attackerDroid.y, enemyTarget.x, enemyTarget.y);
+    
+    const weaponToLimit = new Map([
+        ...ROCKET_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.ROCKETS]),
+        ...MACHINEGUN_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.MACHINEGUN]),
+        ...HOWITZERS_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.HOWITZERS])
+    ]);
 
-        const weaponName = attackerDroid.weapons?.[0]?.name
+    for (const droid of attackerDroids) {
+        const { x, y, weapons, droidType } = droid;
+        const distance = distBetweenTwoPoints(x, y, enemyTarget.x, enemyTarget.y);
 
-        const isRetreating =
-            (ROCKET_WEAPON_LIST.includes(weaponName) && distance < DISTANCE_LIMITS.ROCKETS) ||
-            (MACHINEGUN_WEAPON_LIST.includes(weaponName) && distance < DISTANCE_LIMITS.MACHINEGUN) ||
-            (HOWITZERS_WEAPON_LIST.includes(weaponName) && distance < DISTANCE_LIMITS.HOWITZERS) ||
-            (attackerDroid.droidType === DROID_SENSOR && distance < DISTANCE_LIMITS.SENSOR) ||
-            (attackerDroid.droidType === DROID_CYBORG && distance < DISTANCE_LIMITS.CYBORGS);
+        const weaponName = weapons?.[0]?.name;
+        let limit = weaponToLimit.get(weaponName);
 
-        if (isRetreating) {
-            retreatingDroids.push(attackerDroid);
-        } else {
-            attackingDroids.push(attackerDroid);
+        if (limit === undefined) {
+            if (droidType === DROID_SENSOR) {
+                limit = DISTANCE_LIMITS.SENSOR;
+            } else if (droidType === DROID_CYBORG) {
+                limit = DISTANCE_LIMITS.CYBORGS;
+            }
         }
-    });
+
+        if (limit !== undefined && distance < limit) {
+            retreatingDroids.push(droid);
+        } else {
+            attackingDroids.push(droid);
+        }
+    }
 
     return { attackingDroids, retreatingDroids };
 }
@@ -203,9 +213,9 @@ function droidNeedsRepair(droid, percent) {
     }
 
     if (droid.propulsion === "hover01") {
-        percent = 50;
+        percent = 45;
     } else {
-        percent = 35;
+        percent = 30;
     }
 
     if (droid.order === DORDER_RTR && droid.health < 100) {

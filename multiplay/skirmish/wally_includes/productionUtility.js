@@ -78,7 +78,6 @@ const ROCKET_WEAPON_LIST = [
 	"Missile-A-T", // Scourge
 	"Rocket-HvyA-T", // Tank-killer
 	"Rocket-LtA-T", // Lancer
-	"Rocket-MRL", // MRL
 	"Rocket-Pod" // Rocket Pod
 ];
 
@@ -132,6 +131,7 @@ const CYBORG_HEAVY_LASER = [
 ];
 
 const CYBORG__LIGHT_MACHINEGUN = [
+	"Cyb-Wpn-Laser", // Flashlight
 	"CyborgRotMG", // Heavy machinegun
 	"CyborgChaingun" // Machinegun
 ];

@@ -152,7 +152,7 @@ function filterDroidsByDistance(attackerDroids, enemyTarget) {
 
     const DISTANCE_LIMITS = {
         ROCKETS: componentAvailable("Missile-A-T") ? 14 : 8,
-        MACHINEGUN: componentAvailable("MG4ROTARYMk1") ? 9 : 6,
+        MACHINEGUN: componentAvailable("MG4ROTARYMk1") ? 9 : 5,
         CYBORGS: componentAvailable("Cyb-Hvywpn-A-T") ? 14 : 7,
         SENSOR: componentAvailable("Sensor-WideSpec") ? 17 : 12,
         HOWITZERS: componentAvailable("Howitzer150Mk1") ? 35 : 25

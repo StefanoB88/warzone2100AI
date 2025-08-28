@@ -3,6 +3,7 @@
 		"js": "wally.js",
 		"name": "Wally",
 		"tip": "Designed with a focus on defenses",
-		"easy_tip": "Each action will have a delay of 15 seconds"
+		"easy_tip": "Each action will have a delay of 15 seconds",
+		"medium_tip": "Each action will have a delay of 5 seconds"
 	}
 }

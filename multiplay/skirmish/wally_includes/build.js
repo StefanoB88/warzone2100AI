@@ -300,16 +300,21 @@ function buildDefenses() {
 function returnBestDefense() {
 	const ARTILLERY_CHANCE = 75;
 	const BASTION_CHANCE = 15;
-	const EMP_CHANCE = 20;
+	const EMP_CHANCE = 25;
 	const SENSOR_CHANCE = 5;
 
 	let defenses;
 	let bestDefense;
 
-	// If the ripple is unavailable, retreat trucks and set the retry time
+	// If the ripple is unavailable, build weak/medium defenses
 	if (!isStructureAvailable("Emplacement-Rocket06-IDF")) {
-		defenses = WEAK_DEFENSES[random(WEAK_DEFENSES.length)]
-		return defenses
+		if (isStructureAvailable("WallTower06") || isStructureAvailable("Pillbox-RotMG")) {
+			defenses = MEDIUM_DEFENSES[random(MEDIUM_DEFENSES.length)]
+			return defenses
+		} else {
+			defenses = WEAK_DEFENSES[random(WEAK_DEFENSES.length)]
+			return defenses
+		}
 	}
 
 	if (random(100) < SENSOR_CHANCE) {
@@ -547,7 +552,7 @@ function lookForOil() {
 		return false;
 	}
 
-	const UNSAFE_AREA_RANGE = 10; 
+	const UNSAFE_AREA_RANGE = 10;
 	let success = false;
 
 	// Allied base positions
@@ -582,11 +587,10 @@ function lookForOil() {
 		// Find the closest available droid for this oil
 		for (let j = 0; j < droids.length; j++) {
 			let droid = droids[j];
-			if (!canDroidHelp(droid, oil.x, oil.y) || droid.busy || 
+			if (!canDroidHelp(droid, oil.x, oil.y) || droid.busy ||
 				droid.order === DORDER_BUILD ||
 				droid.order === DORDER_LINEBUILD ||
-				droid.order === DORDER_RECYCLE) 
-			{
+				droid.order === DORDER_RECYCLE) {
 				continue;
 			}
 

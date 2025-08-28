@@ -28,6 +28,11 @@ const WEAK_DEFENSES = [
 	"PillBox1", // Heavy Machinegun Bunker
 ]
 
+const MEDIUM_DEFENSES = [
+    "WallTower06", // Lancer Hardpoint
+    "Pillbox-RotMG", // Rotary Machinegun Bunker
+]
+
 // STRUCTURES.stattype
 const structureTypes = [
     "HQ",

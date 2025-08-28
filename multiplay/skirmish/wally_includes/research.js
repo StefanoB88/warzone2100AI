@@ -1,20 +1,20 @@
 function isPowerResearch(research) {
-	const POWERS = [
-		"R-Struc-Power-Upgrade01",
-		"R-Struc-Power-Upgrade01b",
-		"R-Struc-Power-Upgrade01c",
-		"R-Struc-Power-Upgrade02",
-		"R-Struc-Power-Upgrade03",
-		"R-Struc-Power-Upgrade03a",
-	];
+    const POWERS = [
+        "R-Struc-Power-Upgrade01",
+        "R-Struc-Power-Upgrade01b",
+        "R-Struc-Power-Upgrade01c",
+        "R-Struc-Power-Upgrade02",
+        "R-Struc-Power-Upgrade03",
+        "R-Struc-Power-Upgrade03a",
+    ];
 
-	for (let i = 0, len = POWERS.length; i < len; ++i) {
-		if (research === POWERS[i]) {
-			return true;
-		}
-	}
+    for (let i = 0, len = POWERS.length; i < len; ++i) {
+        if (research === POWERS[i]) {
+            return true;
+        }
+    }
 
-	return false;
+    return false;
 }
 
 function evalResearch(lab, list) {
@@ -56,29 +56,38 @@ function research() {
         isSeaMap ? "R-Vehicle-Prop-Hover" : null,
         START_COMPONENTS,
 
-        FUNDAMENTALS_BODY_T1,
-        FUNDAMENTALS_ROCKETS_WEAPON_T1,
+        // T1
+        FUNDAMENTALS_ROCKET_WEAPON_T1,
         FUNDAMENTALS_MACHINEGUN_WEAPON_T1,
-        FUNDAMENTALS_UPGRADES_T1,
+        FUNDAMENTALS_BODY_T1,
         FUNDAMENTALS_PROPULSION_T1,
-
-        FUNDAMENTALS_BODY_T2,
-        FUNDAMENTALS_UPGRADES_T2,
+        FUNDAMENTALS_UPGRADES_T1,
         FUNDAMENTALS_DEFENCE_T1,
-        FUNDAMENTALS_PROPULSION_T2,
 
-        FUNDAMENTALS_BODY_T3,
-        FUNDAMENTALS_UPGRADES_T3,
-        FUNDAMENTALS_DEFENCE_T2,
-        FUNDAMENTALS_ROCKETS_WEAPON_T2,
+        // T2
+        FUNDAMENTALS_ROCKET_WEAPON_T2,
         FUNDAMENTALS_MACHINEGUN_WEAPON_T2,
+        FUNDAMENTALS_BODY_T2,
+        FUNDAMENTALS_PROPULSION_T2,
+        FUNDAMENTALS_UPGRADES_T2,   
+        FUNDAMENTALS_DEFENCE_T2,     
+
+        // T3
+        FUNDAMENTALS_ROCKET_WEAPON_T3,
+        FUNDAMENTALS_MACHINEGUN_WEAPON_T3,
+        FUNDAMENTALS_BODY_T3,
         FUNDAMENTALS_HOWITZER_WEAPON,
         FUNDAMENTALS_PROPULSION_T3,
+        FUNDAMENTALS_UPGRADES_T3,
+        FUNDAMENTALS_DEFENCE_T3,
 
-        FUNDAMENTALS_SATELLITE,
-        FUNDAMENTALS_UPGRADES_T4,
+        // T4
+        FUNDAMENTALS_ROCKET_WEAPON_T4,
+        FUNDAMENTALS_MACHINEGUN_WEAPON_T4,
+        FUNDAMENTALS_BODY_T4,
+        FUNDAMENTALS_DEFENCE_T4,
         FUNDAMENTALS_PROPULSION_T4,
-        FUNDAMENTALS_BODY_T4
+        FUNDAMENTALS_UPGRADES_T4
     ].filter(Boolean); // Removes any null value (like the one for "R-Vehicle-Prop-Hover" if not isSeaMap)
 
     // List of all possible research items if nothing else is found

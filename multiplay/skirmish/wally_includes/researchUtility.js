@@ -217,6 +217,8 @@ const FUNDAMENTALS_UPGRADES_T1 = [
 	"R-Struc-Research-Upgrade01", // Research speed
 	"R-Struc-Research-Upgrade02", // Research speed
 	"R-Struc-Factory-Upgrade01", // Factory production speed
+	"R-Struc-RprFac-Upgrade01", // Repair facility speed
+	"R-Sys-Sensor-Upgrade01", // Sensor range
 ]
 
 const FUNDAMENTALS_UPGRADES_T2 = [
@@ -224,12 +226,15 @@ const FUNDAMENTALS_UPGRADES_T2 = [
 	"R-Struc-Research-Upgrade05", // Research speed
 	"R-Struc-Research-Upgrade06", // Research speed
 	"R-Struc-Factory-Upgrade04", // Factory production speed
+	"R-Sys-Sensor-Upgrade02", // Sensor range
 ]
 
 const FUNDAMENTALS_UPGRADES_T3 = [
 	"R-Struc-Power-Upgrade03", // Power generator efficiency
 	"R-Struc-Factory-Upgrade07", // Factory production speed
 	"R-Struc-Research-Upgrade06", // Research speed
+	"R-Struc-RprFac-Upgrade04", // Repair facility speed
+	"R-Sys-Sensor-Upgrade03", // Sensor range
 	"R-Sys-Autorepair-General", // Auto-Repair
 	"R-Sys-Sensor-UpLink", // Satellite Uplink Center
 	"R-Struc-Research-Upgrade07", // Research speed

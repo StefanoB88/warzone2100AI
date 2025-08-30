@@ -191,11 +191,11 @@ const FUNDAMENTALS_DEFENCE_T1 = [
 const FUNDAMENTALS_DEFENCE_T2 = [
 	"R-Defense-WallTower06", // Lancer Hardpoint
 	"R-Defense-RotMG", // Rotary Machine Gun Bunker
+	"R-Defense-IDFRocket", // Ripple Rocket Battery
 	"R-Defense-WallUpgrade06", // T2 defences upgrades
 ]
 
 const FUNDAMENTALS_DEFENCE_T3 = [
-	"R-Defense-IDFRocket", // Ripple Rocket Battery
 	"R-Sys-Sensor-WSTower", // Wide Spectrum Sensor Tower
 	"R-Defense-WallUpgrade09", // T3 defences upgrades
 ]

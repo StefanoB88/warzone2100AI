@@ -212,6 +212,10 @@ function buildFundamentals() {
 }
 
 function buildDefensesForAllies() {
+	if (!isHighOilMap) {
+		return false; // Only build defenses for allies on high oil maps
+	}
+
 	// Count all defenses near my base only once
 	const myDefensesCount = enumRange(BASE.x, BASE.y, BASE_THREAT_RANGE, me, true)
 		.filter((obj) => obj.stattype === DEFENSE).length;
@@ -287,17 +291,41 @@ function buildDefenses() {
 		return true;
 	}
 
-	// Build defenses if possible
-	const def = returnBestDefense();
-	if (def !== null) {
-		return grabTrucksAndBuild(def);
+	// Get the furthest derrick (conquered ones around the map) from the base and check if it has enough defenses, if not build some there
+	const derricks = enumStruct(me, DERRICK_STAT).filter(
+		derrick => !isNearBase(derrick.x, derrick.y)
+	);
+
+	let allProtected = true;
+
+	for (const derrick of derricks) {
+		const hasDerrickEnoughDefenses = enumRange(derrick.x, derrick.y, 6, me, true)
+			.filter(obj => obj.stattype === DEFENSE).length >= 2;
+
+		// build defenses if derrick has not enough
+		if (!hasDerrickEnoughDefenses) {
+			let def = returnBestDefense(true);
+			if (def !== null) {
+				return grabTrucksAndBuild(def, derrick);
+			}
+			allProtected = false;
+			break;
+		}
+	}
+
+	// If all derricks are protected, build a defense near the base (default)
+	if (allProtected) {
+		let def = returnBestDefense(false);
+		if (def !== null) {
+			return grabTrucksAndBuild(def);
+		}
 	}
 
 	return false; // No defenses built
 }
 
 
-function returnBestDefense() {
+function returnBestDefense(isDerrickDefense = false) {
 	const ARTILLERY_CHANCE = 75;
 	const BASTION_CHANCE = 15;
 	const EMP_CHANCE = 25;
@@ -305,6 +333,17 @@ function returnBestDefense() {
 
 	let defenses;
 	let bestDefense;
+
+	// If it is a derrick, build weak/medium defenses
+	if (isDerrickDefense) {
+		if (isStructureAvailable("WallTower06") || isStructureAvailable("Pillbox-RotMG")) {
+			defenses = MEDIUM_DEFENSES[random(MEDIUM_DEFENSES.length)]
+			return defenses
+		} else {
+			defenses = WEAK_DEFENSES[random(WEAK_DEFENSES.length)]
+			return defenses
+		}
+	}
 
 	// If the ripple is unavailable, build weak/medium defenses
 	if (!isStructureAvailable("Emplacement-Rocket06-IDF")) {
@@ -341,16 +380,16 @@ function returnBestDefense() {
 
 // Order all idle builders that may be in danger to return to base
 function callIdleBuildersToBase() {
-    const idleBuilders = findIdleTrucks(null, baseBuildersGroup);
+	const idleBuilders = findIdleTrucks(null, baseBuildersGroup);
 
-    idleBuilders.forEach(truck => {
-        const isUnsafe = enumRange(truck.x, truck.y, 10, ENEMIES, false)
-            .some(isUnsafeEnemyObject);
+	idleBuilders.forEach(truck => {
+		const isUnsafe = enumRange(truck.x, truck.y, 10, ENEMIES, false)
+			.some(isUnsafeEnemyObject);
 
-        if (isUnsafe) {
+		if (isUnsafe) {
 			orderDroid(truck, DORDER_RTB)
-        }
-    });
+		}
+	});
 }
 
 // Build factories. Attempts to build at least 1 of each factory.
@@ -500,8 +539,6 @@ function demolishThis(structure) {
 	return success;
 }
 
-// TODO: use HQ as base if possible !!!!!!!!!!!!!!!
-
 // Function to grab available trucks and build a structure
 function grabTrucksAndBuild(structure, base, trucks) {
 	// If no ally base is provided, use my base
@@ -618,8 +655,9 @@ function lookForOil() {
 		// Assign the closest droid to build on this oil
 		if (bestDroid) {
 			bestDroid.busy = true;
-			orderDroidBuild(bestDroid, DORDER_BUILD, DERRICK_STAT, oil.x, oil.y);
-			success = true;
+			if (orderDroidBuild(bestDroid, DORDER_BUILD, DERRICK_STAT, oil.x, oil.y)) {
+				success = true;
+			}
 		}
 	}
 

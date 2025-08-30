@@ -219,6 +219,11 @@ function checkIsHighOilMap() {
 	isHighOilMap =  false;
 }
 
+// Check if an object is a derrick
+function isDerrick(obj) {
+	return (obj.type === STRUCTURE && obj.stattype === RESOURCE_EXTRACTOR);
+}
+
 // Used for deciding if a truck will capture oil.
 function isUnsafeEnemyObject(obj) {
 	if (obj.player === me || allianceExistsBetween(me, obj.player)) {

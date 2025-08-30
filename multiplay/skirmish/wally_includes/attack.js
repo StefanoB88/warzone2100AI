@@ -40,22 +40,21 @@ function attackEnemy(attackerDroids) {
     const enemyTruck = enumDroid(enemyIndex, DROID_CONSTRUCT, false)
         .sort(sortByDistToBase)[0];
 
-    const enemyDefenses = enumStruct(enemyIndex, DEFENSE)
-        .sort(sortByDistToBase);
-    const closestDefense = enemyDefenses[0];
+    const closestDefense = enumStruct(enemyIndex, DEFENSE)
+        .sort(sortByDistToBase)[0];
 
     const enemyDerrick = findNearestDerrick(enemyIndex);
 
     // Get closest among droid, truck, derrick
     const basePos = BASE;
-    currentEnemyTarget = [enemyDroid, enemyTruck, enemyDerrick]
-        .filter(Boolean)
-        .reduce((closest, obj) => {
-            return distBetweenTwoPoints(basePos.x, basePos.y, obj.x, obj.y) <
-                distBetweenTwoPoints(basePos.x, basePos.y, closest.x, closest.y)
-                ? obj
-                : closest;
-        });
+    const candidates = [enemyDroid, enemyTruck, enemyDerrick, closestDefense].filter(Boolean);
+
+    currentEnemyTarget = candidates.length > 0
+        ? candidates.sort((a, b) =>
+            distBetweenTwoPoints(basePos.x, basePos.y, a.x, a.y) -
+            distBetweenTwoPoints(basePos.x, basePos.y, b.x, b.y)
+        )[0]
+        : null;
 
     // Fallback if no droid/truck/derrick found
     if (!currentEnemyTarget) {
@@ -73,6 +72,13 @@ function attackEnemy(attackerDroids) {
     if (closestDefense && isNearBase(closestDefense.x, closestDefense.y)) {
         currentEnemyTarget = closestDefense;
     }
+
+    // If the enemy is the scavenger, attack all the structures and the visible droids
+    if (enemyIndex === scavengerIndex) {
+        currentEnemyTarget = [...enumStruct(scavengerIndex), ...enumDroid(scavengerIndex, true)]
+            .sort(sortByDistToBase)[0];
+    }
+
 
     let realObject = getObject(currentEnemyTarget.type, enemyIndex, currentEnemyTarget.id);
     if (!realObject) {
@@ -116,8 +122,8 @@ function attackEnemyDefenses(attackerDroids) {
 
     const enemyIndex = currentEnemy.position;
 
-    // If there are less than 10 Bunker Busters at the start, don't begin the attack
-    if (bunkerBusterDroids.length < 10) return;
+    // If there are less than 5 Bunker Busters at the start, don't begin the attack
+    if (bunkerBusterDroids.length < 5) return;
 
     if (bunkerBusterDroids.length > 0) {
         // Get all enemy structures sorted by distance
@@ -151,11 +157,10 @@ function filterDroidsByDistance(attackerDroids, enemyTarget) {
     const retreatingDroids = [];
 
     const DISTANCE_LIMITS = {
-        ROCKETS: componentAvailable("Missile-A-T") ? 14 : 8,
-        MACHINEGUN: componentAvailable("MG4ROTARYMk1") ? 9 : 5,
-        CYBORGS: componentAvailable("Cyb-Hvywpn-A-T") ? 14 : 7,
+        ROCKETS: getRocketRange(),
+        MACHINEGUN: getMachinegunRange(),
         SENSOR: componentAvailable("Sensor-WideSpec") ? 17 : 12,
-        HOWITZERS: componentAvailable("Howitzer150Mk1") ? 35 : 25
+        HOWITZERS: getHowitzerRange()
     };
 
 
@@ -176,7 +181,9 @@ function filterDroidsByDistance(attackerDroids, enemyTarget) {
             if (droidType === DROID_SENSOR) {
                 limit = DISTANCE_LIMITS.SENSOR;
             } else if (droidType === DROID_CYBORG) {
-                limit = DISTANCE_LIMITS.CYBORGS;
+                limit = getCyborgRange(weaponName);
+            } else {
+                limit = 5; // Default limit for unknown droids
             }
         }
 
@@ -188,6 +195,116 @@ function filterDroidsByDistance(attackerDroids, enemyTarget) {
     }
 
     return { attackingDroids, retreatingDroids };
+}
+
+function getRocketRange() {
+    let range;
+
+    switch (true) {
+        case componentAvailable("Rocket-Pod"):
+            range = 8;
+            break;
+        case componentAvailable("Rocket-LtA-T"):
+            range = 9;
+            break;
+        case componentAvailable("Rocket-HvyA-T"):
+            range = 10;
+            break;
+        case componentAvailable("Missile-A-T"):
+            range = 14;
+            break;
+        default:
+            range = 8;
+    }
+
+    return range;
+}
+
+function getCyborgRange(weaponName) {
+    let range;
+
+    switch (weaponName) {
+        case "CyborgChaingun":
+            range = 6;
+            break;
+        case "CyborgRotMG":
+            range = 7;
+            break;
+        case "Cyb-Wpn-Laser":
+            range = 12;
+            break;
+        case "Cyb-Hvywpn-PulseLsr":
+            range = 14;
+            break;
+        case "CyborgRocket":
+            range = 7;
+            break;
+        case "Cyb-Wpn-Atmiss":
+            range = 13;
+            break;
+        case "Cyb-Hvywpn-TK":
+            range = 10;
+            break;
+        case "Cyb-Hvywpn-A-T":
+            range = 14;
+            break;
+        default:
+            range = 6;
+    }
+
+    return range;
+}
+
+function getHowitzerRange() {
+    let range;
+
+    switch (true) {
+        case componentAvailable("Howitzer105Mk1"):
+            range = 55;
+            break;
+        case componentAvailable("Howitzer-Incendiary"):
+            range = 40;
+            break;
+        case componentAvailable("Howitzer03-Rot"):
+            range = 55;
+            break;
+        case componentAvailable("Howitzer150Mk1"):
+            range = 64;
+            break;
+        default:
+            range = 40;
+    }
+
+    return range;
+}
+
+function getMachinegunRange() {
+    let range;
+
+    switch (true) {
+        case componentAvailable("MG2Mk1"):
+            range = 6;
+            break;
+        case componentAvailable("MG3Mk1"):
+            range = 7;
+            break;
+        case componentAvailable("MG4ROTARYMk1"):
+            range = 9;
+            break;
+        case componentAvailable("MG5TWINROTARY"):
+            range = 9;
+            break;
+        case componentAvailable("Laser2PULSEMk1"):
+            range = 14;
+            break;
+        case componentAvailable("HeavyLaser"):
+            range = 16;
+            break;
+        default:
+            range = 6;
+    }
+
+    return range;
 }
 
 

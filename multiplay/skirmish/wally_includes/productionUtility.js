@@ -114,13 +114,13 @@ const FLAME_WEAPON_LIST = [
 // CYBORG ROCKETS SECTION
 // ========================
 const CYBORG_HEAVY_ROCKETS = [
-	"Cyb-Hvywpn-A-T",
-	"Cyb-Hvywpn-TK"
+	"Cyb-Hvywpn-A-T", // Super Cyborg scourge
+	"Cyb-Hvywpn-TK" // Super Cyborg tank killer
 ];
 
 const CYBORG_LIGHT_ROCKETS = [
-	"Cyb-Wpn-Atmiss",
-	"CyborgRocket"
+	"Cyb-Wpn-Atmiss", // Cyborg scourge
+	"CyborgRocket" // Cyborg lancer
 ]
 
 // ========================

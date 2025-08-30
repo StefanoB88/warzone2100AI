@@ -5,11 +5,16 @@ function eventChat(from, to, message) {
 
         if (to === me && myTrucksCount >= 5) {
             const closestTrucksFromAlly = enumDroid(me, DROID_CONSTRUCT)
-                ?.sort((obj1, obj2) => sortByDistToPlayerBase(obj1, obj2, from));
+                ?.sort((obj1, obj2) => sortByDistToPlayerBase(obj1, obj2, from))[0];
+
+            let realObject = getObject(closestTrucksFromAlly.type, me, closestTrucksFromAlly.id);
+            if (!realObject) {
+                return; // Just for extra precaution
+            }
 
             // Check if there is at least 1 truck available
-            if (closestTrucksFromAlly && closestTrucksFromAlly.length > 0) {
-                if (donateObject(closestTrucksFromAlly[0], from)) {
+            if (closestTrucksFromAlly !== undefined && closestTrucksFromAlly.health > 0) {
+                if (donateObject(closestTrucksFromAlly, from)) {
                     chat(ALLIES, `${ally.name} I've sent you a truck`);
                 }
             }

@@ -5,7 +5,7 @@ function attack() {
         return;
     }
 
-    let MIN_GROUP_SIZE = isHelpingAlly ? 5 : isHighOilMap ? 30 : 15
+    let MIN_GROUP_SIZE = isMyBaseInTrouble ? 1 : isHelpingAlly ? 5 : isHighOilMap ? 25 : 10
 
     if (attackerDroids.length < MIN_GROUP_SIZE && !isMyBaseInTrouble) {
         retreatToBase(attackerDroids)

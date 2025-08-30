@@ -208,7 +208,7 @@ function createSensorProbability() {
 
 // Replace builders that have no hover propulsion, if hover is available
 function recycleOldBuilders() {
-    if (!componentAvailable("hover01")) {
+    if (!componentAvailable("hover01") || !isHighOilMap) {
         return
     }
 

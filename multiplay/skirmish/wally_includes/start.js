@@ -37,7 +37,7 @@ function eventStartLevel() {
 	setTimer("research", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
 	setTimer("build", reactionSpeedDelay + 1500 + ((1 + random(14)) * random(46))) // 1,5 Seconds
 	setTimer("attack", reactionSpeedDelay + 1000 + ((1 + random(30)) * random(10))) // 1 Second
-	setTimer("isHighOilMap", reactionSpeedDelay + 45000 + ((1 + random(30)) * random(10))) // 45 Seconds
+	setTimer("checkIsHighOilMap", reactionSpeedDelay + 30000 + ((1 + random(30)) * random(10))) // 30 Seconds
 	setTimer("setCurrentEnemy", reactionSpeedDelay + 180000 + ((1 + random(30)) * random(10))) // 3 Minutes
 	setTimer("lookForOil", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
 	setTimer("myBaseInTrouble", reactionSpeedDelay + 5000 + ((1 + random(30)) * random(10))) // 5 Seconds
@@ -90,7 +90,7 @@ function shutdownScripts() {
 	removeTimer("research")
 	removeTimer("build")
 	removeTimer("attack")
-	removeTimer("isHighOilMap")
+	removeTimer("checkIsHighOilMap")
 	removeTimer("setCurrentEnemy")
 	removeTimer("lookForOil")
 	removeTimer("myBaseInTrouble")

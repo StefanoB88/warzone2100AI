@@ -49,13 +49,15 @@ function eventStartLevel() {
 	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(33)) * random(88))) // 2 Minutes
 	setTimer("swapBuildersRole", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
 	setTimer("callIdleBuildersToBase", reactionSpeedDelay + 20000 + ((1 + random(30)) * random(10))) // 20 Seconds
+	setTimer("checkIfDead", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
+	setTimer("askForTruck", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 }
 
 // BaseBuilders should be at least 5, the rest are focused at building defenses
 function swapBuildersRole() {
 	const builders = enumDroid(me, DROID_CONSTRUCT);
-	
-	for(const builder of builders) {
+
+	for (const builder of builders) {
 		eventDroidBuilt(builder)
 	}
 }
@@ -63,6 +65,18 @@ function swapBuildersRole() {
 // Check and update the alive allies
 function checkAllies() {
 	alliesList = getAliveAllyPlayersData()
+}
+
+// Check if Wally has been defeated
+function checkIfDead() {
+	isPlayerAlive(me) ? currentlyDead = false : currentlyDead = true
+}
+
+// Ask for a truck if Wally is dead
+function askForTruck() {
+	if (currentlyDead) {
+		chat(ALLIES, "need truck")
+	}
 }
 
 // Set the an enemy player as enemy to attack
@@ -157,6 +171,10 @@ function eventDroidBuilt(droid) {
 
 function eventObjectTransfer(obj, from) {
 	if (obj.type === DROID) {
+		// If Wally was defeated, update the base position to the ally who donated the truck
+		if (currentlyDead) {
+			BASE = startPositions[from];
+		}
 		let droid = obj
 		eventDroidBuilt(droid)
 		recycleOldBuilders()

@@ -22,9 +22,8 @@ const FUNDAMENTALS_BODY_T1 = [
 ]
 
 const FUNDAMENTALS_BODY_T2 = [
-	"R-Vehicle-Body08", // Scorpion
 	"R-Vehicle-Body11", // Python
-	"R-Vehicle-Body12", // Mantis
+	"R-Vehicle-Body08", // Scorpion
 	"R-Vehicle-Metals03", // T2 armor
 	"R-Cyborg-Metals03", // T2 cyborg armor
 	"R-Vehicle-Armor-Heat03", // T2 heat armor
@@ -32,6 +31,7 @@ const FUNDAMENTALS_BODY_T2 = [
 
 const FUNDAMENTALS_BODY_T3 = [
 	"R-Vehicle-Body09", // Tiger
+	"R-Vehicle-Body12", // Mantis
 	"R-Vehicle-Body03", // Retaliation
 	"R-Vehicle-Body07", // Retribution
 	"R-Vehicle-Metals06", // T3 armor

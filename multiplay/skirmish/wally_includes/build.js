@@ -85,8 +85,10 @@ function checkUncompletedStructures() {
 	if (droidsToCompleteStructure.length && structlist.length) {
 		structlist = structlist.sort(sortByDistToBase);
 		for (let j = 0; j < droidsToCompleteStructure.length; ++j) {
-			if (orderDroidObj(droidsToCompleteStructure[j], DORDER_HELPBUILD, structlist[0])) {
-				success = true;
+			if (canDroidHelp(droidsToCompleteStructure[i], structlist[0].x, structlist[0].y)) {
+				if (orderDroidObj(droidsToCompleteStructure[j], DORDER_HELPBUILD, structlist[0])) {
+					success = true;
+				}
 			}
 		}
 	}
@@ -531,8 +533,10 @@ function demolishThis(structure) {
 	let droidList = findIdleTrucks(structure, defensesBuildersGroup);
 
 	for (let i = 0, d = droidList.length; i < d; ++i) {
-		if (orderDroidObj(droidList[i], DORDER_DEMOLISH, structure)) {
-			success = true;
+		if (canDroidHelp(droidList[i], structure.x, structure.y)) {
+			if (orderDroidObj(droidList[i], DORDER_DEMOLISH, structure)) {
+				success = true;
+			}
 		}
 	}
 

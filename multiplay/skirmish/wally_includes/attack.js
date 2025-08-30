@@ -41,6 +41,7 @@ function attackEnemy(attackerDroids) {
         .sort(sortByDistToBase)[0];
 
     const closestDefense = enumStruct(enemyIndex, DEFENSE)
+        .filter(def => def.stattype !== WALL) // Ignore walls
         .sort(sortByDistToBase)[0];
 
     const enemyDerrick = findNearestDerrick(enemyIndex);

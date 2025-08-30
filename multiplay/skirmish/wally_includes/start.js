@@ -48,6 +48,7 @@ function eventStartLevel() {
 	setTimer("checkAllies", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(33)) * random(88))) // 2 Minutes
 	setTimer("swapBuildersRole", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
+	setTimer("callIdleBuildersToBase", reactionSpeedDelay + 20000 + ((1 + random(30)) * random(10))) // 20 Seconds
 }
 
 // BaseBuilders should be at least 5, the rest are focused at building defenses

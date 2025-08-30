@@ -339,6 +339,20 @@ function returnBestDefense() {
 	return bestDefense;
 }
 
+// Order all idle builders that may be in danger to return to base
+function callIdleBuildersToBase() {
+    const idleBuilders = findIdleTrucks(null, baseBuildersGroup);
+
+    idleBuilders.forEach(truck => {
+        const isUnsafe = enumRange(truck.x, truck.y, 10, ENEMIES, false)
+            .some(isUnsafeEnemyObject);
+
+        if (isUnsafe) {
+			orderDroid(truck, DORDER_RTB)
+        }
+    });
+}
+
 // Build factories. Attempts to build at least 1 of each factory.
 function factoryBuildOrder() {
 	const FAC_ORDER = [FACTORY_STAT, VTOL_FACTORY_STAT, CYBORG_FACTORY_STAT];

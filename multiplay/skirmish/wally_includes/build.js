@@ -40,17 +40,32 @@ function buildBasicBase() {
 		return true;
 	}
 
-	// Build at least 2 power gen
-	if (countStruct(POW_GEN_STAT) < 2 && grabTrucksAndBuild(POW_GEN_STAT, BASE, trucks)) {
+	// Build at least 1 factory first (top priority for unit production)
+	if (countStruct(FACTORY_STAT) === 0 && grabTrucksAndBuild(FACTORY_STAT, BASE, trucks)) {
 		return true;
 	}
 
-	// Build at least 2 factories
+	// Build at least 1 power gen
+	if (countStruct(POW_GEN_STAT) === 0 && grabTrucksAndBuild(POW_GEN_STAT, BASE, trucks)) {
+		return true;
+	}
+
+	// Build at least 1 research lab
+	if (!researchDone && countStruct(RES_LAB_STAT) === 0 && grabTrucksAndBuild(RES_LAB_STAT, BASE, trucks)) {
+		return true;
+	}
+
+	// Build second factory
 	if (countStruct(FACTORY_STAT) < 2 && grabTrucksAndBuild(FACTORY_STAT, BASE, trucks)) {
 		return true;
 	}
 
-	// Build at least 2 lab if there are still something to research
+	// Build second power gen if there are unused derricks
+	if (countStruct(POW_GEN_STAT) < 2 && numUnusedDerricks() > 0 && grabTrucksAndBuild(POW_GEN_STAT, BASE, trucks)) {
+		return true;
+	}
+
+	// Build second research lab
 	if (!researchDone && countStruct(RES_LAB_STAT) < 2 && grabTrucksAndBuild(RES_LAB_STAT, BASE, trucks)) {
 		return true;
 	}
@@ -85,7 +100,7 @@ function checkUncompletedStructures() {
 	if (droidsToCompleteStructure.length && structlist.length) {
 		structlist = structlist.sort(sortByDistToBase);
 		for (let j = 0; j < droidsToCompleteStructure.length; ++j) {
-			if (canDroidHelp(droidsToCompleteStructure[i], structlist[0].x, structlist[0].y)) {
+			if (canDroidHelp(droidsToCompleteStructure[j], structlist[0].x, structlist[0].y)) {
 				if (orderDroidObj(droidsToCompleteStructure[j], DORDER_HELPBUILD, structlist[0])) {
 					success = true;
 				}
@@ -336,15 +351,22 @@ function returnBestDefense(isDerrickDefense = false) {
 	let defenses;
 	let bestDefense;
 
-	// If it is a derrick, build weak/medium defenses
+	// If it is a derrick, build the best available defense tier
 	if (isDerrickDefense) {
-		if (isStructureAvailable("WallTower06") || isStructureAvailable("Pillbox-RotMG")) {
-			defenses = MEDIUM_DEFENSES[random(MEDIUM_DEFENSES.length)]
-			return defenses
+		let defenseList;
+		if (isStructureAvailable("Emplacement-Rocket06-IDF") || isStructureAvailable("WallTower-HvATrocket")) {
+			defenseList = STRONG_DEFENSES;
+		} else if (isStructureAvailable("WallTower06") || isStructureAvailable("Pillbox-RotMG")) {
+			defenseList = MEDIUM_DEFENSES;
 		} else {
-			defenses = WEAK_DEFENSES[random(WEAK_DEFENSES.length)]
-			return defenses
+			defenseList = WEAK_DEFENSES;
 		}
+		for (let i = 0; i < defenseList.length; i++) {
+			if (isStructureAvailable(defenseList[i])) {
+				return defenseList[i];
+			}
+		}
+		return null;
 	}
 
 	// If the ripple is unavailable, build weak/medium defenses
@@ -514,7 +536,7 @@ function findIdleTrucks(obj, builderGroupName) {
 
 	let builders = enumGroup(builderGroupName);
 	let droidlist = [];
-	if (obj !== null) {
+	if (obj === null || obj === undefined) {
 		obj = BASE;
 	}
 
@@ -603,15 +625,16 @@ function canDroidHelp(mydroid, bx, by) {
 }
 
 function lookForOil() {
-	if (!needMoreDerricks()) {
-		return false;
-	}
-
 	const UNSAFE_AREA_RANGE = 10;
 	let success = false;
 
 	// Allied base positions
 	let allyBasePositions = alliesList.map((a) => a.base);
+
+	// Get all constructor droids that are currently building something
+	let busyTrucks = enumDroid(me, DROID_CONSTRUCT).filter(truck =>
+		truck.order === DORDER_BUILD || truck.order === DORDER_HELPBUILD
+	);
 
 	// Get all valid oils and sort by distance to base
 	let oils = enumFeature(ALL_PLAYERS, OIL_RES_STAT)
@@ -621,33 +644,33 @@ function lookForOil() {
 			);
 			let unsafe = enumRange(oil.x, oil.y, UNSAFE_AREA_RANGE, ENEMIES, false)
 				.filter(isUnsafeEnemyObject).length > 0;
-			return !tooClose && !unsafe;
+			// Check if any of our trucks are already building near this oil
+			let alreadyTargeted = busyTrucks.some(truck =>
+				distBetweenTwoPoints(truck.x, truck.y, oil.x, oil.y) < 5
+			);
+			return !tooClose && !unsafe && !alreadyTargeted;
 		})
-		.sort(sortByDistToBase); // sort by distance to base
+		.sort(sortByDistToBase);
 
 	if (oils.length === 0) return false;
 
-	// Get all available droids
-	let droids = enumGroup(baseBuildersGroup);
+	// Get all available idle droids from base builders group
+	let droids = enumGroup(baseBuildersGroup).filter(droid =>
+		canDroidHelp(droid, BASE.x, BASE.y)
+	);
 
-	let bestDroid = null;
-	let bestDist = 99999;
+	if (droids.length === 0) return false;
 
-	// Loop through each oil
-	for (let i = 0; i < oils.length; i++) {
-		let oil = oils[i];
-		bestDroid = null;
-		bestDist = 99999;
+	// Assign one truck per oil — closest idle truck to each oil
+	let assignedDroids = new Set();
 
-		// Find the closest available droid for this oil
-		for (let j = 0; j < droids.length; j++) {
-			let droid = droids[j];
-			if (!canDroidHelp(droid, oil.x, oil.y) || droid.busy ||
-				droid.order === DORDER_BUILD ||
-				droid.order === DORDER_LINEBUILD ||
-				droid.order === DORDER_RECYCLE) {
-				continue;
-			}
+	for (const oil of oils) {
+		let bestDroid = null;
+		let bestDist = 99999;
+
+		for (const droid of droids) {
+			if (assignedDroids.has(droid.id)) continue;
+			if (!droidCanReach(droid, oil.x, oil.y)) continue;
 
 			let dist = distBetweenTwoPoints(droid.x, droid.y, oil.x, oil.y);
 			if (dist < bestDist) {
@@ -656,9 +679,8 @@ function lookForOil() {
 			}
 		}
 
-		// Assign the closest droid to build on this oil
 		if (bestDroid) {
-			bestDroid.busy = true;
+			assignedDroids.add(bestDroid.id);
 			if (orderDroidBuild(bestDroid, DORDER_BUILD, DERRICK_STAT, oil.x, oil.y)) {
 				success = true;
 			}

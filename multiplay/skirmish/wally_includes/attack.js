@@ -65,7 +65,7 @@ function attackEnemy(attackerDroids) {
         } else if (closestDefense) {
             currentEnemyTarget = closestDefense;
         } else {
-            return; // No structures or droids remain
+            currentEnemyTarget = enumDroid(enemyIndex, DROID_WEAPON, false).concat(enumDroid(enemyIndex, DROID_CYBORG, false).concat(enumDroid(enemyIndex, DROID_CONSTRUCT, false)))[0];
         }
     }
 
@@ -422,4 +422,24 @@ function eventAttacked(victim, attacker) {
             setCurrentEnemy(enemy);
         }
     }
+}
+
+// Check if enemies has VTOLs
+function scanForVTOLs() {
+	if (enemiesHaveVTOLs)
+	{
+		removeTimer("scanForVTOLs");
+		return; // Already aware of VTOLs
+	}
+
+	var visibleEnemyDroids = enumDroid(ENEMIES, DROID_WEAPON, true);
+
+	for (let i = 0, l = visibleEnemyDroids.length; i < l; ++i)
+	{
+		if (isVTOL(visibleEnemyDroids[i]))
+		{
+			enemiesHaveVTOLs = true;
+			break;
+		}
+	}
 }

@@ -58,6 +58,7 @@ const FUNDAMENTALS_PROPULSION_T1 = [
 
 const FUNDAMENTALS_PROPULSION_T2 = [
 	"R-Vehicle-Prop-Tracks", // Tracks
+	"R-Vehicle-Prop-VTOL", // VTOL Propulsion
 	"R-Vehicle-Engine03",
 	"R-Vehicle-Engine04",
 ]
@@ -226,6 +227,8 @@ const FUNDAMENTALS_UPGRADES_T2 = [
 	"R-Struc-Research-Upgrade05", // Research speed
 	"R-Struc-Research-Upgrade06", // Research speed
 	"R-Struc-Factory-Upgrade04", // Factory production speed
+	"R-Struc-VTOLFactory", // VTOL Factory
+	"R-Struc-VTOLPad", // VTOL Rearming Pad
 	"R-Sys-Sensor-Upgrade02", // Sensor range
 ]
 

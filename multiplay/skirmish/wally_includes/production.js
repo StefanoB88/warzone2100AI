@@ -1,9 +1,4 @@
 function produceDroids() {
-    // Check if power is sufficient to produce anything
-    if (getRealPower() < MIN_PRODUCTION_POWER) {
-        return; // Stop function if there's not enough power
-    }
-
     // List of factory types
     const FAC_LIST = [FACTORY_STAT, VTOL_FACTORY_STAT, CYBORG_FACTORY_STAT];
     let virtualTrucks = 0; // Count of trucks currently being produced
@@ -41,14 +36,15 @@ function produceDroids() {
             if (structureIdle(factory)) {
 
                 const numTrucks = countDroid(DROID_CONSTRUCT) + virtualTrucks;
+                const desiredTrucks = getDesiredTruckCount();
 
                 if (FAC_LIST[i] === FACTORY_STAT) {
 
                     // Standard factories: Build trucks or attackers
-                    if (numTrucks + virtualTrucks < MIN_BASE_TRUCKS) {
+                    if (numTrucks < desiredTrucks) {
                         produceBuilder(factory); // Build a truck
-                    } else if (countStruct(POW_GEN_STAT)) {
-                        produceTank(factory); // Build an attacker unit if power generator exists
+                    } else {
+                        produceTank(factory); // Build an attacker unit
 
                         // Occasionally build sensors
 						if (random(100) < createSensorProbability()) {
@@ -56,13 +52,8 @@ function produceDroids() {
 						}
                     }
                 } else {
-                    // For other factory types, ensure power generator exists
-                    if (!countStruct(POW_GEN_STAT)) {
-                        continue; // Skip if no power generator exists
-                    }
-
                     if (FAC_LIST[i] === CYBORG_FACTORY_STAT) {
-						const shouldBuildCyborgConstructor = numTrucks < MIN_BASE_TRUCKS && !countStruct(FACTORY_STAT, me);
+						const shouldBuildCyborgConstructor = numTrucks < desiredTrucks && !countStruct(FACTORY_STAT, me);
 
 						if (shouldBuildCyborgConstructor) {
 							produceCyborgBuilder(factory); // Build cyborg builder units
@@ -70,6 +61,10 @@ function produceDroids() {
 							produceCyborg(factory); // Build cyborg units
 						}
 					} else {
+                        // For VTOL factory, ensure power generator exists
+                        if (!countStruct(POW_GEN_STAT)) {
+                            continue;
+                        }
                         produceVTOL(factory); // Build VTOL units
                     }
                 }

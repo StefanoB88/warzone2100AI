@@ -33,6 +33,13 @@ const MEDIUM_DEFENSES = [
     "Pillbox-RotMG", // Rotary Machinegun Bunker
 ]
 
+const STRONG_DEFENSES = [
+	"Emplacement-Rocket06-IDF", // Ripple Rocket Battery
+	"Emplacement-HeavyPlasmaLauncher", // Heavy Plasma Launcher
+	"WallTower-HvATrocket", // Tank-Killer Hardpoint
+	"WallTower06", // Lancer Hardpoint (fallback)
+]
+
 // STRUCTURES.stattype
 const structureTypes = [
     "HQ",

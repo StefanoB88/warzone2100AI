@@ -16,11 +16,11 @@ const LASERLINK_STAT = "A0LasSatCommand";
 const ELECTRONIC_DEFENSES = ["Sys-SpyTower", "WallTower-EMP", "Emplacement-MortarEMP"];
 
 // -- globals
-const MIN_BASE_TRUCKS = 10;
-const MAX_BASE_TRUCKS = 15;
+const MIN_BASE_TRUCKS = 2;
+const MAX_BASE_TRUCKS = 12;
 const MIN_BUILD_POWER = 30;
 const MIN_RESEARCH_POWER = -50;
-const MIN_PRODUCTION_POWER = 50;
+const MIN_PRODUCTION_POWER = -25;
 const BASE_THREAT_RANGE = Math.ceil(17 + (mapWidth + mapHeight) / 2 / 20);
 var BASE = startPositions[me];
 var baseBuildersGroup;
@@ -33,9 +33,19 @@ var isSeaMap; // Used to determine if it is a hover map.
 var isMyBaseInTrouble = false; // Used to determine if the base is in danger.
 var isHighOilMap;
 var useBunkerBuster = false;
-var enemiesHaveVtol;
+var enemiesHaveVTOLs = false; // Used to determine if VTOLs are allowed.
 var areAllEnemiesDead = false;
 var isHelpingAlly = false;
+
+// Returns the desired truck count based on current economy
+function getDesiredTruckCount() {
+	const derricks = countStruct(DERRICK_STAT);
+	if (derricks >= 20) return 10;
+	if (derricks >= 12) return 7;
+	if (derricks >= 8) return 5;
+	if (derricks >= 4) return 3;
+	return 2;
+}
 
 /**
  * @typedef {Object} PlayerData

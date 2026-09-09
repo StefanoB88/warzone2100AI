@@ -53,7 +53,7 @@ function research() {
     }
 
     const researchPriorities = [
-        isSeaMap ? "R-Vehicle-Prop-Hover" : null,
+        isSeaMap ? ["R-Vehicle-Prop-Hover"] : null,
         START_COMPONENTS,
 
         // T1
@@ -69,6 +69,7 @@ function research() {
         FUNDAMENTALS_MACHINEGUN_WEAPON_T2,
         FUNDAMENTALS_BODY_T2,
         FUNDAMENTALS_PROPULSION_T2,
+        ["R-Vehicle-Prop-VTOL"],
         FUNDAMENTALS_UPGRADES_T2,   
         FUNDAMENTALS_DEFENCE_T2,     
 
@@ -88,7 +89,7 @@ function research() {
         FUNDAMENTALS_DEFENCE_T4,
         FUNDAMENTALS_PROPULSION_T4,
         FUNDAMENTALS_UPGRADES_T4
-    ].filter(Boolean); // Removes any null value (like the one for "R-Vehicle-Prop-Hover" if not isSeaMap)
+    ].filter(Boolean); // Removes any null values
 
     // List of all possible research items if nothing else is found
     const allResearchList = enumResearch();

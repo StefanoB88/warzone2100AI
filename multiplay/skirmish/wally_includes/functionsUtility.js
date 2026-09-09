@@ -213,10 +213,7 @@ function getPlayerName(player) {
 
 // Check if we have a lot of derricks
 function checkIsHighOilMap() {
-	if (countStruct(DERRICK_STAT, me) >= 30) {
-		isHighOilMap = true;
-	}
-	isHighOilMap =  false;
+	isHighOilMap = countStruct(DERRICK_STAT, me) >= 30;
 }
 
 // Check if an object is a derrick

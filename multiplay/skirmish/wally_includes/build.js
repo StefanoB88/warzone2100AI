@@ -206,8 +206,27 @@ function buildFundamentals() {
 		return;
 	}
 
-	if (isStructureAvailable(REPAIR_FACILITY_STAT) && countStruct(REPAIR_FACILITY_STAT) < countStruct(FACTORY_STAT) && grabTrucksAndBuild(REPAIR_FACILITY_STAT)) {
-		return;
+	if (isStructureAvailable(REPAIR_FACILITY_STAT)) {
+		const baseRepairFacilities = enumStruct(me, REPAIR_FACILITY_STAT).filter(r => isNearBase(r.x, r.y));
+		
+		// Demolish excess repair facilities in the base
+		if (baseRepairFacilities.length > 1) {
+			for (let i = 1; i < baseRepairFacilities.length; i++) {
+				if (demolishThis(baseRepairFacilities[i])) {
+					return;
+				}
+			}
+		}
+
+		// Ensure we have at least 1 repair facility in the main base
+		if (baseRepairFacilities.length === 0) {
+			if (grabTrucksAndBuild(REPAIR_FACILITY_STAT)) return;
+		}
+
+		// Try to build forward repair facilities near safe remote derricks
+		if (buildForwardRepairFacilities()) {
+			return;
+		}
 	}
 
 	// Build VTOL defenses in base.
@@ -283,6 +302,60 @@ function buildDefensesForAllies() {
 
 	return false; // Return false if no defenses were built for allies
 }
+
+function buildForwardRepairFacilities() {
+	if (getRealPower() < MIN_BUILD_POWER) {
+		return false;
+	}
+
+	// Get all remote derricks
+	let remoteDerricks = enumStruct(me, DERRICK_STAT).filter(
+		derrick => !isNearBase(derrick.x, derrick.y)
+	);
+
+	if (currentEnemy && currentEnemy.base) {
+		const baseToEnemy = distBetweenTwoPoints(BASE.x, BASE.y, currentEnemy.base.x, currentEnemy.base.y);
+		
+		// Filter out derricks that are further from the enemy than we are (must be between us and them)
+		remoteDerricks = remoteDerricks.filter(d => 
+			distBetweenTwoPoints(d.x, d.y, currentEnemy.base.x, currentEnemy.base.y) < baseToEnemy
+		);
+
+		// Sort by distance to enemy base (closest to enemy first)
+		remoteDerricks.sort((a, b) => {
+			return distBetweenTwoPoints(a.x, a.y, currentEnemy.base.x, currentEnemy.base.y) - 
+				   distBetweenTwoPoints(b.x, b.y, currentEnemy.base.x, currentEnemy.base.y);
+		});
+	} else {
+		// Fallback: sort by furthest from our base
+		remoteDerricks.sort(sortByDistToBase).reverse();
+	}
+
+	for (const derrick of remoteDerricks) {
+		// Only build forward base if derrick is protected (has at least 1 defense nearby) and is safe from enemies
+		const hasDefenses = enumRange(derrick.x, derrick.y, 15, me, false)
+			.filter(obj => obj.type === STRUCTURE && obj.stattype === DEFENSE).length >= 1;
+
+		const isUnsafe = enumRange(derrick.x, derrick.y, 15, ENEMIES, false)
+			.some(isUnsafeEnemyObject);
+
+		if (hasDefenses && !isUnsafe) {
+			// Check if we already have a repair facility nearby
+			const nearbyRepairFacilities = enumRange(derrick.x, derrick.y, 25, me, false)
+				.filter(obj => obj.type === STRUCTURE && obj.stattype === REPAIR_FACILITY).length;
+
+			// Limit the total number of repair facilities so we don't spam them everywhere
+			if (nearbyRepairFacilities === 0 && countStruct(REPAIR_FACILITY_STAT) < 6) {
+				if (grabTrucksAndBuild(REPAIR_FACILITY_STAT, derrick)) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 
 let lastAttemptTime = 0;
 const RETRY_DELAY = 20000; // 20-second delay in milliseconds
@@ -625,7 +698,7 @@ function canDroidHelp(mydroid, bx, by) {
 }
 
 function lookForOil() {
-	const UNSAFE_AREA_RANGE = 10;
+	const UNSAFE_AREA_RANGE = 18; // Increased from 10 to 18 to avoid long-range fire
 	let success = false;
 
 	// Allied base positions
@@ -639,16 +712,22 @@ function lookForOil() {
 	// Get all valid oils and sort by distance to base
 	let oils = enumFeature(ALL_PLAYERS, OIL_RES_STAT)
 		.filter((oil) => {
-			let tooClose = allyBasePositions.some(base =>
+			let tooCloseToAlly = allyBasePositions.some(base =>
 				distBetweenTwoPoints(base.x, base.y, oil.x, oil.y) < 15
 			);
+
+			// Is it practically inside the enemy base? Suicide to send a truck there.
+			let tooCloseToEnemyBase = currentEnemy && currentEnemy.base ? 
+				distBetweenTwoPoints(oil.x, oil.y, currentEnemy.base.x, currentEnemy.base.y) < 25 : false;
+
 			let unsafe = enumRange(oil.x, oil.y, UNSAFE_AREA_RANGE, ENEMIES, false)
 				.filter(isUnsafeEnemyObject).length > 0;
+
 			// Check if any of our trucks are already building near this oil
 			let alreadyTargeted = busyTrucks.some(truck =>
 				distBetweenTwoPoints(truck.x, truck.y, oil.x, oil.y) < 5
 			);
-			return !tooClose && !unsafe && !alreadyTargeted;
+			return !tooCloseToAlly && !tooCloseToEnemyBase && !unsafe && !alreadyTargeted;
 		})
 		.sort(sortByDistToBase);
 

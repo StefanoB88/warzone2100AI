@@ -231,7 +231,13 @@ function isUnsafeEnemyObject(obj) {
 		return true;
 	}
 
-	return (obj.type === STRUCTURE && obj.stattype === DEFENSE && obj.status === BUILT);
+	// Any defense or production facility makes the area unsafe
+	if (obj.type === STRUCTURE && obj.status === BUILT) {
+		const dangerousStats = ["DEFENSE", "FACTORY", "CYBORG_FACTORY", "VTOL_FACTORY", "HQ"];
+		return dangerousStats.includes(obj.stattype);
+	}
+
+	return false;
 }
 
 function numWeapObjectsInRange(x, y, enemies, allyIndex, scanRadius, visible) {

@@ -170,7 +170,7 @@ function eventDroidBuilt(droid) {
 }
 
 function eventObjectTransfer(obj, from) {
-	if (obj.type === DROID) {
+	if (obj.type === DROID && from !== me) {
 		// If Wally was defeated, update the base position to the ally who donated the truck
 		if (currentlyDead) {
 			BASE = startPositions[from];

@@ -27,6 +27,7 @@ var baseBuildersGroup;
 var defensesBuildersGroup;
 var attackerGroup;
 var bunkerBusterGroup;
+var helperGroup;
 var researchDone;
 var currentlyDead;
 var isSeaMap; // Used to determine if it is a hover map.

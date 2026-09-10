@@ -698,6 +698,12 @@ function canDroidHelp(mydroid, bx, by) {
 }
 
 function lookForOil() {
+	// Limit the number of "extra" derricks. Each power generator can only handle 4 derricks.
+	// If we have 10 more derricks than our power generators can process, stop capturing more until we build another generator.
+	if (countStruct(DERRICK_STAT) - (countStruct(POW_GEN_STAT) * 4) >= 10) {
+		return false;
+	}
+
 	const UNSAFE_AREA_RANGE = 18; // Increased from 10 to 18 to avoid long-range fire
 	let success = false;
 

@@ -4,26 +4,29 @@ function checkAllyBaseInTrouble() {
 		return;
 	}
 
+	let anyAllyInTrouble = false;
+
 	for (const ally of alliesList) {
 		if (!isPlayerAlive(ally.position)) {
-			return
+			continue; // Skip dead allies instead of returning
 		}
 
-		const allyBasePosition = ally.base
-
+		const allyBasePosition = ally.base;
 		const isSafe = numWeapObjectsInRange(allyBasePosition.x, allyBasePosition.y, ENEMIES, ally.position, BASE_THREAT_RANGE, true);
 
-		if (!isSafe && isHelpingAlly === false) {
-			helpAlly(ally)
-			return;
-		} else {
-			// If there are no more enemies, retire
-			stopHelpingAlly()
-			return;
+		if (!isSafe) {
+			anyAllyInTrouble = true;
+			if (isHelpingAlly === false) {
+				helpAlly(ally);
+				return; // We only help one ally at a time
+			}
 		}
 	}
 
-	return;
+	// If no allies are in trouble, retire the helpers
+	if (!anyAllyInTrouble) {
+		stopHelpingAlly();
+	}
 }
 
 // Returns true if the ally is helped, false otherwise
@@ -31,8 +34,10 @@ function helpAlly(allyPlayerData) {
 	currentHelpedAlly = allyPlayerData
 
 	const playerData = allyPlayerData;
+	const allAttackers = enumGroup(attackerGroup);
 
-    if (enumGroup(attackerGroup).length < 10) {
+    if (allAttackers.length < 10) {
+		chat(ALLIES, `Sorry ${playerData.name}! I don't have enough units to help you right now.`);
 		return false; // Early exit if not enough droids
 	}
 
@@ -43,13 +48,21 @@ function helpAlly(allyPlayerData) {
 		return false; // No enemiesDroids found
 	}
 
-    const droidsEnemyPlayer = enemiesDroids[0].player;
+	// Sort our attackers by distance to the ally's base (closest first)
+	const sortedAttackers = allAttackers.sort((a, b) => {
+		return distBetweenTwoPoints(a.x, a.y, playerData.base.x, playerData.base.y) - 
+			   distBetweenTwoPoints(b.x, b.y, playerData.base.x, playerData.base.y);
+	});
 
-    if (droidsEnemyPlayer !== undefined) {
-		setCurrentEnemy(droidsEnemyPlayer);
+	// Transfer up to half of our attackers (max 20) to the helperGroup
+	const numToTransfer = Math.min(20, Math.floor(sortedAttackers.length / 2));
+	for (let i = 0; i < numToTransfer; i++) {
+		groupAdd(helperGroup, sortedAttackers[i]);
+		// Immediately order them to move toward the ally's base
+		orderDroidLoc(sortedAttackers[i], DORDER_MOVE, playerData.base.x, playerData.base.y);
 	}
 
-    chat(ALLIES, `Hold on ${playerData.name}! I'm coming to help you, ${enumGroup(attackerGroup).length} units are on the way`);
+    chat(ALLIES, `Hold on ${playerData.name}! I'm coming to help you, ${numToTransfer} units are on the way`);
 
     helpingAlly();
 
@@ -60,10 +73,8 @@ function helpingAlly() {
 	// Set helping state
 	isHelpingAlly = true;
 
-	// Don't change the target for 3 minutes, since we are helping an ally
-	removeTimer("checkAllyBaseInTrouble")
-	removeTimer("setCurrentEnemy")
-	queue("stopHelpingAlly", 180000); // After 3 minutes, stop helping the ally
+	// Keep checking if ally still needs help (don't remove the timer!)
+	queue("stopHelpingAlly", 180000); // After 3 minutes, stop helping the ally regardless
 }
 
 function stopHelpingAlly() {
@@ -71,9 +82,14 @@ function stopHelpingAlly() {
 		return
 	}
 
+	// Transfer all helpers back to the main attackerGroup
+	const helpers = enumGroup(helperGroup);
+	for (const droid of helpers) {
+		groupAdd(attackerGroup, droid);
+	}
+
 	setCurrentEnemy()
 	setTimer("checkAllyBaseInTrouble", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
-	setTimer("setCurrentEnemy", reactionSpeedDelay + 60000 + ((1 + random(30)) * random(10))) // 60 Seconds
 	isHelpingAlly = false
 }
 
@@ -85,7 +101,10 @@ function myBaseInTrouble() {
 		return false;
 	} else {
 		isMyBaseInTrouble = true;
-		stopHelpingAlly()
+		if (isHelpingAlly === true) {
+			stopHelpingAlly()
+			chat(ALLIES, "Sorry! I have to stop helping you, my base is in danger!")
+		}
 		return true;
 	}
 }
@@ -98,12 +117,15 @@ function donateOil() {
         return;
     }
 
-    // Shuffle alliesList to select allies in random order
-    const shuffledAllies = shuffleArray([...alliesList]);
+    // Sort allies by power (lowest first) so we always help the poorest ally
+    const sortedAllies = [...alliesList]
+        .filter(ally => isPlayerAlive(ally.position))
+        .sort((a, b) => getRealPower(a.position) - getRealPower(b.position));
 
-    for (const ally of shuffledAllies) {
+    for (const ally of sortedAllies) {
+        const allyPower = getRealPower(ally.position);
         // Check if the ally needs power
-        if (getRealPower(ally) < 50 && friendlyPlayer(ally) && isPlayerAlive(ally)) {
+        if (allyPower < 50 && friendlyPlayer(ally.position)) {
             let powerToDonate;
 
             // Calculate power to donate based on current power levels

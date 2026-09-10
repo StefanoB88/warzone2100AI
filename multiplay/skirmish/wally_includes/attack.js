@@ -1,19 +1,49 @@
 function attack() {
     const attackerDroids = enumGroup(attackerGroup).filter(attacker => attacker.order !== DORDER_RTR)
-
-    if (attackerDroids.length === 0) {
-        return;
-    }
-
-    let MIN_GROUP_SIZE = isMyBaseInTrouble ? 1 : isHelpingAlly ? 5 : isHighOilMap ? 25 : 10
+    
+    let MIN_GROUP_SIZE = isMyBaseInTrouble ? 1 : isHighOilMap ? 25 : 10
 
     if (attackerDroids.length < MIN_GROUP_SIZE && !isMyBaseInTrouble) {
         retreatToBase(attackerDroids)
-        return
+    } else if (attackerDroids.length > 0) {
+        attackEnemy(attackerDroids)
+        attackEnemyDefenses(attackerDroids)
     }
 
-    attackEnemy(attackerDroids)
-    attackEnemyDefenses(attackerDroids)
+    if (isHelpingAlly && currentHelpedAlly) {
+        const helperDroids = enumGroup(helperGroup).filter(helper => helper.order !== DORDER_RTR);
+        if (helperDroids.length > 0) {
+            helpAttackEnemy(helperDroids, currentHelpedAlly.base);
+        }
+    }
+}
+
+function helpAttackEnemy(helperDroids, allyBasePos) {
+    // Find visible enemy combat units near the ally's base
+    const nearbyEnemies = enumRange(allyBasePos.x, allyBasePos.y, BASE_THREAT_RANGE * 2, ENEMIES, true)
+        .filter(obj => obj.type === DROID && (obj.droidType === DROID_WEAPON || obj.droidType === DROID_CYBORG));
+
+    // Sort enemies by distance to ally base (closest threats first)
+    nearbyEnemies.sort((a, b) => 
+        distBetweenTwoPoints(a.x, a.y, allyBasePos.x, allyBasePos.y) -
+        distBetweenTwoPoints(b.x, b.y, allyBasePos.x, allyBasePos.y)
+    );
+
+    for (const droid of helperDroids) {
+        if (droidNeedsRepair(droid)) continue;
+
+        const distToAlly = distBetweenTwoPoints(droid.x, droid.y, allyBasePos.x, allyBasePos.y);
+
+        if (nearbyEnemies.length > 0 && distToAlly < BASE_THREAT_RANGE * 2) {
+            // Close enough to fight — attack the closest enemy to the ally base
+            orderDroidObj(droid, DORDER_ATTACK, nearbyEnemies[0]);
+        } else {
+            // Not there yet or no visible enemies — move toward the ally's base
+            if (droid.order !== DORDER_MOVE && droid.order !== DORDER_ATTACK) {
+                orderDroidLoc(droid, DORDER_MOVE, allyBasePos.x, allyBasePos.y);
+            }
+        }
+    }
 }
 
 function attackEnemy(attackerDroids) {
@@ -25,13 +55,7 @@ function attackEnemy(attackerDroids) {
         return;
     }
 
-    let sortFunc;
-
-    if (isHelpingAlly) {
-        sortFunc = (obj1, obj2) => sortByDistToPlayerBase(obj1, obj2, currentHelpedAlly.position);
-    } else {
-        sortFunc = sortByDistToBase;
-    }
+    let sortFunc = sortByDistToBase;
 
     const enemyDroid = enumDroid(enemyIndex, DROID_WEAPON, false)
         .concat(enumDroid(enemyIndex, DROID_CYBORG, false))
@@ -46,12 +70,21 @@ function attackEnemy(attackerDroids) {
 
     const enemyDerrick = findNearestDerrick(enemyIndex);
 
-    // Get closest among droid, truck, derrick
+    // Get closest among droid, truck, derrick — prefer reachable targets
     const basePos = BASE;
     const candidates = [enemyDroid, enemyTruck, enemyDerrick, closestDefense].filter(Boolean);
 
-    currentEnemyTarget = candidates.length > 0
-        ? candidates.sort((a, b) =>
+    // Use a representative droid to check reachability
+    const refDroid = attackerDroids[0];
+    const reachableCandidates = refDroid 
+        ? candidates.filter(c => droidCanReach(refDroid, c.x, c.y))
+        : candidates;
+
+    // Prefer reachable targets, fall back to all candidates if none are reachable
+    const pool = reachableCandidates.length > 0 ? reachableCandidates : candidates;
+
+    currentEnemyTarget = pool.length > 0
+        ? pool.sort((a, b) =>
             distBetweenTwoPoints(basePos.x, basePos.y, a.x, a.y) -
             distBetweenTwoPoints(basePos.x, basePos.y, b.x, b.y)
         )[0]
@@ -360,7 +393,12 @@ function sendDroidsToAttackTarget(droids, target) {
         if (droid.droidType === DROID_SENSOR) {
             orderDroidObj(droid, DORDER_OBSERVE, target);
         } else if (droid.order !== DORDER_RECYCLE && !droidNeedsRepair(droid)) {
-            orderDroidObj(droid, DORDER_ATTACK, target);
+            if (droidCanReach(droid, target.x, target.y)) {
+                orderDroidObj(droid, DORDER_ATTACK, target);
+            } else {
+                // Can't reach target — move as close as possible instead of getting stuck
+                orderDroidLoc(droid, DORDER_MOVE, target.x, target.y);
+            }
         }
     }
 }

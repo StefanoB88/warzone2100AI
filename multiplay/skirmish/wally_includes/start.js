@@ -7,6 +7,7 @@ function eventStartLevel() {
 	defensesBuildersGroup = newGroup()
 	attackerGroup = newGroup()
 	bunkerBusterGroup = newGroup()
+	helperGroup = newGroup()
 
 	enumDroid(me).forEach(droid => {
 		eventDroidBuilt(droid);

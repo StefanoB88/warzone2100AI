@@ -55,7 +55,7 @@ function random(max) {
 
 // Return our real power level
 function getRealPower(player) {
-	if (!player) {
+	if (player === undefined) {
 		player = me;
 	}
 
@@ -65,10 +65,12 @@ function getRealPower(player) {
 // Sort an object according to the distance from the base
 function sortByDistToPlayerBase(obj1, obj2, playerIndex) {
     if (playerIndex === undefined) {
-        return
+        return 0;
     }
 
-    let playerBase = alliesList[playerIndex].base
+    const ally = alliesList.find(a => a.position === playerIndex);
+    const playerBase = ally ? ally.base : startPositions[playerIndex];
+    if (!playerBase) return 0;
 
 	let dist1 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj1.x, obj1.y);
 	let dist2 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj2.x, obj2.y);
@@ -78,10 +80,12 @@ function sortByDistToPlayerBase(obj1, obj2, playerIndex) {
 // Sort an object from farthest to closest to the player's base
 function sortByDistToFarthestPlayerBase(obj1, obj2, playerIndex) {
     if (playerIndex === undefined) {
-        return;
+        return 0;
     }
 
-    let playerBase = alliesList[playerIndex].base;
+    const ally = alliesList.find(a => a.position === playerIndex);
+    const playerBase = ally ? ally.base : startPositions[playerIndex];
+    if (!playerBase) return 0;
 
     let dist1 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj1.x, obj1.y);
     let dist2 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj2.x, obj2.y);
@@ -91,10 +95,8 @@ function sortByDistToFarthestPlayerBase(obj1, obj2, playerIndex) {
 
 // Sort an object according to the distance from the base
 function sortByDistToBase(obj1, obj2) {
-    let playerBase = enumStruct(me, PLAYER_HQ_STAT)[0] ?? BASE
-
-	let dist1 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj1.x, obj1.y);
-	let dist2 = distBetweenTwoPoints(playerBase.x, playerBase.y, obj2.x, obj2.y);
+	let dist1 = distBetweenTwoPoints(BASE.x, BASE.y, obj1.x, obj1.y);
+	let dist2 = distBetweenTwoPoints(BASE.x, BASE.y, obj2.x, obj2.y);
 	return (dist1 - dist2);
 }
 
@@ -167,6 +169,18 @@ function getAliveEnemyPlayersData() {
  * @returns {PlayerData}
  */
 function createScavengerPlayerData(scavengerIndex) {
+    let scavengerBase = { x: mapWidth / 2, y: mapHeight / 2 }; // Fallback to center of map
+    let scavStructs = enumStruct(scavengerIndex);
+    
+    if (scavStructs.length > 0) {
+        scavengerBase = { x: scavStructs[0].x, y: scavStructs[0].y };
+    } else {
+        let scavDroids = enumDroid(scavengerIndex);
+        if (scavDroids.length > 0) {
+            scavengerBase = { x: scavDroids[0].x, y: scavDroids[0].y };
+        }
+    }
+
     return {
         difficulty: null,
         colour: null,
@@ -175,7 +189,7 @@ function createScavengerPlayerData(scavengerIndex) {
         isHuman: false,
         name: "Scavenger",
         team: -1,
-        base: null
+        base: scavengerBase
     };
 }
 
@@ -184,6 +198,10 @@ function createScavengerPlayerData(scavengerIndex) {
 function isPlayerAlive(playerIndex) {
 	if (playerIndex === undefined) {
 		return false;
+	}
+
+	if (playerIndex === scavengerIndex) {
+		return (countStruct("A0BaBaFactory", scavengerIndex) + countStruct(DERRICK_STAT, scavengerIndex) + countDroid(DROID_ANY, scavengerIndex)) > 0;
 	}
 
 	if (countDroid(DROID_CONSTRUCT, playerIndex) + countStruct(FACTORY_STAT, playerIndex) + countStruct(CYBORG_FACTORY_STAT, playerIndex) > 0) {
@@ -195,7 +213,7 @@ function isPlayerAlive(playerIndex) {
 
 // Check if a player is an ally
 function friendlyPlayer(player) {
-	if (!player) {
+	if (player === undefined) {
 		return false;
 	}
 
@@ -204,8 +222,8 @@ function friendlyPlayer(player) {
 
 // Get the player name
 function getPlayerName(player) {
-	if (!player) {
-		return;
+	if (player === undefined || !playerData[player]) {
+		return "Scavenger";
 	}
 
 	return playerData[player].name;
@@ -221,7 +239,7 @@ function isDerrick(obj) {
 	return (obj.type === STRUCTURE && obj.stattype === RESOURCE_EXTRACTOR);
 }
 
-// Used for deciding if a truck will capture oil.
+// Used for deciding if a truck will capture oil or build/recover in an area.
 function isUnsafeEnemyObject(obj) {
 	if (obj.player === me || allianceExistsBetween(me, obj.player)) {
 		return false;
@@ -233,17 +251,39 @@ function isUnsafeEnemyObject(obj) {
 
 	// Any defense or production facility makes the area unsafe
 	if (obj.type === STRUCTURE && obj.status === BUILT) {
-		const dangerousStats = ["DEFENSE", "FACTORY", "CYBORG_FACTORY", "VTOL_FACTORY", "HQ"];
+		const dangerousStats = [DEFENSE, FACTORY, CYBORG_FACTORY, VTOL_FACTORY, HQ];
 		return dangerousStats.includes(obj.stattype);
 	}
 
 	return false;
 }
 
+// Evaluates if an area at (x, y) is safe from enemy units, defenses, and the enemy base
+function isAreaSafe(x, y, range = 18) {
+	if (x === undefined || y === undefined) {
+		return false;
+	}
+
+	// Check if too close to the current enemy base
+	if (currentEnemy && currentEnemy.base) {
+		if (distBetweenTwoPoints(x, y, currentEnemy.base.x, currentEnemy.base.y) < 25) {
+			return false;
+		}
+	}
+
+	// Check if there are any dangerous enemy droids or structures in range, or if we are outnumbered
+	const hasUnsafeObjects = enumRange(x, y, range, ENEMIES, false).some(isUnsafeEnemyObject);
+	if (hasUnsafeObjects) {
+		return false;
+	}
+
+	return numWeapObjectsInRange(x, y, ENEMIES, me, range, false);
+}
+
 function numWeapObjectsInRange(x, y, enemies, allyIndex, scanRadius, visible) {
     let isSafe = true;
     
-	if (!x || !y) {
+	if (x === undefined || y === undefined) {
 		return isSafe; // Seems to be the best fail-safe
 	}
 
@@ -251,20 +291,20 @@ function numWeapObjectsInRange(x, y, enemies, allyIndex, scanRadius, visible) {
 		scanRadius = 5;
 	}
 
-	if (!visible) {
+	if (visible === undefined) {
 		visible = false;
 	}
 
 	let allyDroids = enumDroid(allyIndex, DROID_WEAPON).concat(enumDroid(allyIndex, DROID_CYBORG));
     let enemiesStuff = enumRange(x, y, scanRadius, enemies, visible);
 
-    let enemyDroidsCount = 0
+    let enemyDroidsCount = 0;
 
     for (let i = 0, l = enemiesStuff.length; i < l; ++i) {
 		let obj = enemiesStuff[i];
 
 		if (obj.type === DROID && (obj.droidType === DROID_WEAPON || obj.droidType === DROID_CYBORG) && obj.droidType !== DROID_CONSTRUCT) {
-            enemyDroidsCount++
+            enemyDroidsCount++;
         }
 	}
 

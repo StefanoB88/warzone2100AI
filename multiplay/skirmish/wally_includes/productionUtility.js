@@ -145,10 +145,23 @@ const CYBORG_FLAMERS = [
 ];
 
 // ========================
-// VTOL ROCKETS SECTION
+// VTOL BOMBS SECTION
 // ========================
-const VTOL_ROCKETS = [
-	"Missile-VTOL-AT", // scourge
-	"Rocket-VTOL-HvyA-T", // tank killer
-	"Rocket-VTOL-LtA-T", // lancer
+const VTOL_WEAPONS = [
+	"Bomb5-VTOL-Plasmite", // Plasmite Bomb Bay
+	"Bomb4-VTOL-HvyINC", // Thermite Bomb Bay
+	"Bomb2-VTOL-HvHE", // HEAP Bomb Bay
+	"Bomb3-VTOL-LtINC", // Phosphor Bomb Bay
+	"Bomb1-VTOL-LtHE", // Cluster Bomb Bay
+];
+
+// ========================
+// ANTI-AIR TURRETS SECTION
+// ========================
+const AA_WEAPON_LIST = [
+	"Missile-HvySAM", // Vindicator SAM
+	"Missile-LtSAM", // Avenger SAM
+	"QuadRotAAGun", // Whirlwind AA
+	"AAGun2Mk1", // Cyclone Flak
+	"QuadMg1AAGun", // Hurricane AA
 ];

@@ -1,6 +1,8 @@
 
 // -- definitions
 const OIL_RES_STAT = "OilResource";
+const OIL_DRUM_STAT = "OilDrum";
+const ARTIFACT_STAT = "Crate";
 const RES_LAB_STAT = "A0ResearchFacility";
 const POW_GEN_STAT = "A0PowerGenerator";
 const FACTORY_STAT = "A0LightFactory";
@@ -28,6 +30,7 @@ var defensesBuildersGroup;
 var attackerGroup;
 var bunkerBusterGroup;
 var helperGroup;
+var vtolGroup;
 var researchDone;
 var currentlyDead;
 var isSeaMap; // Used to determine if it is a hover map.

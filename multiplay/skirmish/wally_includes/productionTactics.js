@@ -37,13 +37,41 @@ function checkTankKillerWeapons() {
     );
 }
 
-// If the enemies have a lot of defenses, produce some bunker buster
+// If the enemies have defenses and our army is close enough to engage them, produce some bunker busters
 function checkCurrentEnemyDefenses() {
+    if (!currentEnemy || currentEnemy.position === undefined) {
+        return 0;
+    }
+
+    // Cap Bunker Busters so we don't clog the unit limit with anti-structure only units
+    if (enumGroup(bunkerBusterGroup).length >= 12) {
+        return 0;
+    }
+
     const enemyIndex = currentEnemy.position;
+    const currentEnemyDefenses = enumStruct(enemyIndex, DEFENSE).sort(sortByDistToBase);
 
-    const currentEnemyDefenses = enumStruct(enemyIndex, DEFENSE)
+    if (currentEnemyDefenses.length === 0) {
+        return 0;
+    }
 
-    let probability = currentEnemyDefenses.length / useBunkerBuster ? 1.2 : 2;
+    // Only produce Bunker Busters if our main attack army is already reasonably close to the enemy defenses
+    const closestDefense = currentEnemyDefenses[0];
+    const attackers = enumGroup(attackerGroup);
+    if (attackers.length < 10) {
+        return 0;
+    }
+
+    const closeAttackersCount = attackers.filter(droid =>
+        distBetweenTwoPoints(droid.x, droid.y, closestDefense.x, closestDefense.y) <= BASE_THREAT_RANGE + 10
+    ).length;
+
+    // Require at least 4 of our combat units (or useBunkerBuster already active) to be near the enemy defense line
+    if (!useBunkerBuster && closeAttackersCount < 4) {
+        return 0;
+    }
+
+    let probability = currentEnemyDefenses.length / (useBunkerBuster ? 1.2 : 2);
 
     return probability;
 }
@@ -53,16 +81,16 @@ function checkLongRangeSupport() {
     let probability = 5;
 
     const myDroidsSize = enumGroup(attackerGroup)
-    .filter(droid => !HOWITZERS_WEAPON_LIST.includes(droid.weapons?.[0]?.name ?? ""))
-    .length
+        .filter(droid => !HOWITZERS_WEAPON_LIST.includes(droid.weapons?.[0]?.name ?? ""))
+        .length;
 
-    if (myDroidsSize >= 50) {
-        probability = 10
+    if (myDroidsSize >= 100) {
+        probability = 25;
     } else if (myDroidsSize >= 80) {
-        probability = 20
-    } else if (myDroidsSize >= 100) {
-        probability = 25
+        probability = 20;
+    } else if (myDroidsSize >= 50) {
+        probability = 10;
     }
 
-    return probability
+    return probability;
 }

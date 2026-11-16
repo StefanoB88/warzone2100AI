@@ -183,7 +183,39 @@ const FUNDAMENTALS_HOWITZER_WEAPON = [
 	"R-Wpn-HowitzerMk1", // Howitzer
 ]
 
+// ------------------ VTOL BOMBS ------------------
+
+const FUNDAMENTALS_VTOL_BOMBS_T2 = [
+	"R-Wpn-Bomb01", // Cluster Bomb Bay
+	"R-Wpn-Bomb-Damage01", // HE Bomb Shells
+	"R-Wpn-Bomb02", // HEAP Bomb Bay
+	"R-Wpn-Bomb03", // Phosphor Bomb Bay
+]
+
+const FUNDAMENTALS_VTOL_BOMBS_T3 = [
+	"R-Wpn-Bomb-Damage02", // Improved Bomb Warhead
+	"R-Wpn-Bomb04", // Thermite Bomb Bay
+	"R-Wpn-Bomb-Damage03", // Advanced Bomb Warhead
+	"R-Wpn-Bomb05", // Plasmite Bomb Bay
+	"R-Struc-VTOLPad-Upgrade01", // Automated VTOL Rearming
+	"R-Struc-VTOLPad-Upgrade03", // Automated VTOL Rearming Mk3
+	"R-Struc-VTOLPad-Upgrade06", // Robotic VTOL Rearming Mk3
+]
+
 // ------------------ DEFENCES ------------------
+
+const AA_RESEARCH = [
+	"R-Wpn-AAGun03", // Hurricane AA Turret
+	"R-Defense-AASite-QuadMg1", // Hurricane AA Site
+	"R-Wpn-AAGun02", // Cyclone Flak Turret
+	"R-Defense-AASite-QuadBof", // Cyclone AA Flak Site
+	"R-Wpn-AAGun04", // Whirlwind AA Turret
+	"R-Defense-AASite-QuadRotMg", // Whirlwind AA Site
+	"R-Wpn-Missile-LtSAM", // Avenger SAM
+	"R-Defense-SamSite1", // Avenger SAM Site
+	"R-Wpn-Missile-HvSAM", // Vindicator SAM
+	"R-Defense-SamSite2" // Vindicator SAM Site
+]
 
 const FUNDAMENTALS_DEFENCE_T1 = [
 	"R-Defense-WallUpgrade03", // T1 defences upgrades

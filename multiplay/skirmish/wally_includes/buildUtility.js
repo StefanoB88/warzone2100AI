@@ -40,6 +40,14 @@ const STRONG_DEFENSES = [
 	"WallTower06", // Lancer Hardpoint (fallback)
 ]
 
+const AA_DEFENSES = [
+	"P0-AASite-SAM2", // Vindicator SAM Site
+	"P0-AASite-SAM1", // Avenger SAM Site
+	"AASite-QuadRotMg", // Whirlwind AA Site
+	"AASite-QuadBof", // Cyclone AA Flak Site
+	"AASite-QuadMg1" // Hurricane AA Site
+]
+
 // STRUCTURES.stattype
 const structureTypes = [
     "HQ",

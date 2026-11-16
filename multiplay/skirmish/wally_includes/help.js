@@ -145,13 +145,13 @@ function donateOil() {
             }
 
             // Donate power to the ally
-            donatePower(powerToDonate, ally);
-            chat(ally, `I've sent you: ${powerToDonate.toFixed(2)} power to help you out.`);
+            donatePower(powerToDonate, ally.position);
+            chat(ally.position, `I've sent you: ${powerToDonate.toFixed(2)} power to help you out.`);
 
             // Update current power after donation
             currentPower -= powerToDonate;
 
-            // Exit loop after donating to a random ally
+            // Exit loop after donating to the poorest ally
             break;
         }
     }
@@ -159,14 +159,19 @@ function donateOil() {
 
 
 function checkForDefeatedAllies() {
-	const defeatedAllies = getDefeatedAllyPlayersData()
+	if (countDroid(DROID_CONSTRUCT, me) < 5) {
+		return;
+	}
+
+	const defeatedAllies = getDefeatedAllyPlayersData();
 
 	for (const ally of defeatedAllies) {
+		const trucks = enumDroid(me, DROID_CONSTRUCT);
+		if (trucks.length < 5) break;
 
-		const truckForAlly = enumDroid(me, DROID_CONSTRUCT)[0]
-    
-        if (donateObject(truckForAlly, ally)) {
-            chat(ALLIES, `${ally.name} ` + "I've sent you a truck :P")
+		const truckForAlly = trucks[0];
+        if (truckForAlly && donateObject(truckForAlly, ally.position)) {
+            chat(ALLIES, `${ally.name} I've sent you a truck :P`);
         }
 	}
 }

@@ -1,20 +1,78 @@
+function isDroidRepairing(droid) {
+    if (droid.order === DORDER_RTR) return true;
+    if (typeof DORDER_RTR_SPECIFIED !== "undefined" && droid.order === DORDER_RTR_SPECIFIED) return true;
+    return false;
+}
+
 function attack() {
-    const attackerDroids = enumGroup(attackerGroup).filter(attacker => attacker.order !== DORDER_RTR)
+    const attackerDroids = enumGroup(attackerGroup).filter(
+        attacker => !isDroidRepairing(attacker) && attacker.order !== DORDER_RECOVER
+    );
     
-    let MIN_GROUP_SIZE = isMyBaseInTrouble ? 1 : isHighOilMap ? 25 : 10
+    let MIN_GROUP_SIZE = isMyBaseInTrouble ? 1 : isHighOilMap ? 25 : 10;
 
     if (attackerDroids.length < MIN_GROUP_SIZE && !isMyBaseInTrouble) {
-        retreatToBase(attackerDroids)
+        retreatToBase(attackerDroids);
     } else if (attackerDroids.length > 0) {
-        attackEnemy(attackerDroids)
-        attackEnemyDefenses(attackerDroids)
+        attackEnemy(attackerDroids);
+        attackEnemyDefenses(attackerDroids);
     }
 
+    // Manage VTOL strikes and rearming independently
+    manageVTOLs();
+
     if (isHelpingAlly && currentHelpedAlly) {
-        const helperDroids = enumGroup(helperGroup).filter(helper => helper.order !== DORDER_RTR);
+        const helperDroids = enumGroup(helperGroup).filter(
+            helper => !isDroidRepairing(helper)
+        );
         if (helperDroids.length > 0) {
             helpAttackEnemy(helperDroids, currentHelpedAlly.base);
         }
+    }
+}
+
+function manageVTOLs() {
+    const vtols = enumGroup(vtolGroup);
+    if (vtols.length === 0) return;
+
+    const readyVTOLs = [];
+    const hasPads = countStruct(VTOL_PAD_STAT) > 0;
+
+    for (const vtol of vtols) {
+        const armed = vtol.weapons?.[0]?.armed ?? vtol.armed ?? 100;
+        const needsRearm = armed < 20 || vtol.health < 60;
+
+        if (needsRearm) {
+            if (hasPads && vtol.order !== DORDER_REARM) {
+                orderDroid(vtol, DORDER_REARM);
+            } else if (!hasPads && vtol.order !== DORDER_RTB) {
+                orderDroid(vtol, DORDER_RTB);
+            }
+        } else if (vtol.order === DORDER_REARM && (armed < 100 || vtol.health < 100)) {
+            // Let it finish rearming and repairing on the pad
+            continue;
+        } else {
+            readyVTOLs.push(vtol);
+        }
+    }
+
+    const MIN_VTOL_STRIKE_SIZE = isMyBaseInTrouble ? 1 : 4;
+    if (readyVTOLs.length < MIN_VTOL_STRIKE_SIZE) {
+        return;
+    }
+
+    let target = currentEnemyTarget;
+    if (!target && currentEnemy && currentEnemy.position !== undefined) {
+        target = findNearestFactory(currentEnemy.position) || findNearestDerrick(currentEnemy.position);
+    }
+
+    if (!target) return;
+
+    const realTarget = getObject(target.type, target.player, target.id);
+    if (!realTarget) return;
+
+    for (const vtol of readyVTOLs) {
+        orderDroidObj(vtol, DORDER_ATTACK, realTarget);
     }
 }
 
@@ -47,10 +105,15 @@ function helpAttackEnemy(helperDroids, allyBasePos) {
 }
 
 function attackEnemy(attackerDroids) {
+    if (!currentEnemy || currentEnemy.position === undefined) {
+        setCurrentEnemy();
+        return;
+    }
+
     const enemyIndex = currentEnemy.position;
 
     // If the current enemy is dead, choose another one
-    if (!isPlayerAlive(enemyIndex) || enemyIndex === undefined) {
+    if (!isPlayerAlive(enemyIndex)) {
         setCurrentEnemy();
         return;
     }
@@ -98,7 +161,13 @@ function attackEnemy(attackerDroids) {
         } else if (closestDefense) {
             currentEnemyTarget = closestDefense;
         } else {
-            currentEnemyTarget = enumDroid(enemyIndex, DROID_WEAPON, false).concat(enumDroid(enemyIndex, DROID_CYBORG, false).concat(enumDroid(enemyIndex, DROID_CONSTRUCT, false)))[0];
+            let enemyStructs = enumStruct(enemyIndex);
+            if (enemyStructs.length > 0) {
+                currentEnemyTarget = enemyStructs.sort(sortByDistToBase)[0];
+            } else {
+                currentEnemyTarget = enumDroid(enemyIndex, DROID_ANY, false)
+                    .sort(sortByDistToBase)[0];
+            }
         }
     }
 
@@ -109,10 +178,13 @@ function attackEnemy(attackerDroids) {
 
     // If the enemy is the scavenger, attack all the structures and the visible droids
     if (enemyIndex === scavengerIndex) {
-        currentEnemyTarget = [...enumStruct(scavengerIndex), ...enumDroid(scavengerIndex, true)]
+        currentEnemyTarget = [...enumStruct(scavengerIndex), ...enumDroid(scavengerIndex, DROID_ANY, true)]
             .sort(sortByDistToBase)[0];
     }
 
+    if (!currentEnemyTarget) {
+        return;
+    }
 
     let realObject = getObject(currentEnemyTarget.type, enemyIndex, currentEnemyTarget.id);
     if (!realObject) {
@@ -124,11 +196,11 @@ function attackEnemy(attackerDroids) {
 
     // Send all the droids to attack if the base is in trouble
     if (isMyBaseInTrouble) {
-        const droids = enumDroid(me, DROID_WEAPON)
+        const droids = enumDroid(me, DROID_WEAPON).concat(enumDroid(me, DROID_CYBORG));
         sendDroidsToAttackTarget(droids, currentEnemyTarget);
     } else {
         // Retreat to the base (move away) from the enemy target if it is too close
-        retreatToBase(retreatingDroids)
+        retreatToBase(retreatingDroids);
 
         // Send droids that are at a safe distance to attack
         sendDroidsToAttackTarget(attackingDroids, currentEnemyTarget);
@@ -136,52 +208,59 @@ function attackEnemy(attackerDroids) {
 }
 
 function attackEnemyDefenses(attackerDroids) {
-    if (!currentEnemyTarget) return;
+    if (!currentEnemy || !currentEnemyTarget) return;
 
     // Get the current list of Bunker Busters
     let bunkerBusterDroids = enumGroup(bunkerBusterGroup);
+    if (bunkerBusterDroids.length === 0) return;
 
     // Send all to attack anything if the base is in trouble
     if (isMyBaseInTrouble) {
         sendDroidsToAttackTarget(bunkerBusterDroids, currentEnemyTarget);
-    }
-
-    useBunkerBuster = attackerDroids.some(droid =>
-        distBetweenTwoPoints(droid.x, droid.y, closestEnemyStructure.x, closestEnemyStructure.y) <= BASE_THREAT_RANGE
-    )
-
-    if (!useBunkerBuster) {
-        return
+        return;
     }
 
     const enemyIndex = currentEnemy.position;
+    const enemyStructures = enumStruct(enemyIndex, DEFENSE).sort(sortByDistToBase);
+    const closestEnemyStructure = enemyStructures[0];
 
-    // If there are less than 5 Bunker Busters at the start, don't begin the attack
-    if (bunkerBusterDroids.length < 5) return;
-
-    if (bunkerBusterDroids.length > 0) {
-        // Get all enemy structures sorted by distance
-        let enemyStructures = enumStruct(enemyIndex, DEFENSE)
-            .sort(sortByDistToBase);
-
-        if (enemyStructures.length === 0) {
-            // Ensure the structure still exists
+    if (!closestEnemyStructure) {
+        useBunkerBuster = false;
+        if (bunkerBusterDroids.length >= 5) {
             let realObject = getObject(currentEnemyTarget.type, enemyIndex, currentEnemyTarget.id);
-            if (!realObject) return;
-
-            sendDroidsToAttackTarget(bunkerBusterDroids, currentEnemyTarget)
-            return; // Attack everything else if there are no enemy structures left (rare case)
+            if (realObject) {
+                sendDroidsToAttackTarget(bunkerBusterDroids, currentEnemyTarget);
+            }
         }
+        return;
+    }
 
-        let targetStructure = enemyStructures[0];
+    // Count how many of our main attack droids are actually close to the enemy defense to escort the Bunker Busters
+    const escortCount = attackerDroids.filter(droid =>
+        distBetweenTwoPoints(droid.x, droid.y, closestEnemyStructure.x, closestEnemyStructure.y) <= BASE_THREAT_RANGE
+    ).length;
 
-        // Ensure the structure still exists
-        let realObject = getObject(targetStructure.type, enemyIndex, targetStructure.id);
-        if (!realObject) return;
+    // Only engage with Bunker Busters if at least 5 attack units are in range of the enemy defense (or it's right at our base)
+    useBunkerBuster = escortCount >= 5 || isNearBase(closestEnemyStructure.x, closestEnemyStructure.y);
 
-        for (const bunkerBuster of bunkerBusterDroids) {
-            orderDroidObj(bunkerBuster, DORDER_ATTACK, targetStructure);
-        }
+    if (!useBunkerBuster) {
+        // Pull Bunker Busters back to base so they don't wander alone and die in vain
+        retreatToBase(bunkerBusterDroids);
+        return;
+    }
+
+    // If there are less than 5 Bunker Busters, keep them safe at base until a strike group is ready
+    if (bunkerBusterDroids.length < 5) {
+        retreatToBase(bunkerBusterDroids);
+        return;
+    }
+
+    // Ensure the structure still exists
+    let realObject = getObject(closestEnemyStructure.type, enemyIndex, closestEnemyStructure.id);
+    if (!realObject) return;
+
+    for (const bunkerBuster of bunkerBusterDroids) {
+        orderDroidObj(bunkerBuster, DORDER_ATTACK, closestEnemyStructure);
     }
 }
 
@@ -235,17 +314,17 @@ function getRocketRange() {
     let range;
 
     switch (true) {
-        case componentAvailable("Rocket-Pod"):
-            range = 8;
-            break;
-        case componentAvailable("Rocket-LtA-T"):
-            range = 9;
+        case componentAvailable("Missile-A-T"):
+            range = 14;
             break;
         case componentAvailable("Rocket-HvyA-T"):
             range = 10;
             break;
-        case componentAvailable("Missile-A-T"):
-            range = 14;
+        case componentAvailable("Rocket-LtA-T"):
+            range = 9;
+            break;
+        case componentAvailable("Rocket-Pod"):
+            range = 8;
             break;
         default:
             range = 8;
@@ -293,17 +372,17 @@ function getHowitzerRange() {
     let range;
 
     switch (true) {
-        case componentAvailable("Howitzer105Mk1"):
+        case componentAvailable("Howitzer150Mk1"):
+            range = 64;
+            break;
+        case componentAvailable("Howitzer03-Rot"):
             range = 55;
             break;
         case componentAvailable("Howitzer-Incendiary"):
             range = 40;
             break;
-        case componentAvailable("Howitzer03-Rot"):
+        case componentAvailable("Howitzer105Mk1"):
             range = 55;
-            break;
-        case componentAvailable("Howitzer150Mk1"):
-            range = 64;
             break;
         default:
             range = 40;
@@ -316,23 +395,23 @@ function getMachinegunRange() {
     let range;
 
     switch (true) {
-        case componentAvailable("MG2Mk1"):
-            range = 6;
-            break;
-        case componentAvailable("MG3Mk1"):
-            range = 7;
-            break;
-        case componentAvailable("MG4ROTARYMk1"):
-            range = 9;
-            break;
-        case componentAvailable("MG5TWINROTARY"):
-            range = 9;
+        case componentAvailable("HeavyLaser"):
+            range = 16;
             break;
         case componentAvailable("Laser2PULSEMk1"):
             range = 14;
             break;
-        case componentAvailable("HeavyLaser"):
-            range = 16;
+        case componentAvailable("MG5TWINROTARY"):
+            range = 9;
+            break;
+        case componentAvailable("MG4ROTARYMk1"):
+            range = 9;
+            break;
+        case componentAvailable("MG3Mk1"):
+            range = 7;
+            break;
+        case componentAvailable("MG2Mk1"):
+            range = 6;
             break;
         default:
             range = 6;
@@ -343,17 +422,17 @@ function getMachinegunRange() {
 
 
 function retreatToBase(droids) {
-    for (droid of droids) {
-        if (droid.order !== DORDER_RTR) {
-            orderDroid(droid, DORDER_RTB)
+    for (const droid of droids) {
+        if (!isDroidRepairing(droid) && droid.order !== DORDER_RTB) {
+            orderDroid(droid, DORDER_RTB);
         }
     }
 }
 
-// Does a droid need to repair
-function droidNeedsRepair(droid, percent) {
-    // It's a sensor or it's busy or blocked
-    if (droid.droidType === DROID_SENSOR || droid === null) {
+// Does a droid need to repair? Distributes damaged droids across available Repair Facilities to avoid traffic jams.
+function droidNeedsRepair(droid, repairFacilities, loadMap) {
+    // It's a sensor or it's invalid
+    if (!droid || droid.droidType === DROID_SENSOR) {
         return false;
     }
 
@@ -366,21 +445,69 @@ function droidNeedsRepair(droid, percent) {
         return false;
     }
 
-    if (droid.propulsion === "hover01") {
-        percent = 45;
-    } else {
-        percent = 30;
+    const percent = droid.propulsion === "hover01" ? 45 : 30;
+
+    if (droid.health < 99) {
+        if (isDroidRepairing(droid)) {
+            return true;
+        }
+        // Also keep repairing if the droid was moving to a repair facility and is already within 5 tiles of one
+        const facilities = repairFacilities !== undefined
+            ? repairFacilities
+            : enumStruct(me, REPAIR_FACILITY_STAT).filter(r => r.status === BUILT);
+
+        for (const fac of facilities) {
+            if (distBetweenTwoPoints(droid.x, droid.y, fac.x, fac.y) <= 5 && droid.health < 95) {
+                if (droid.order !== DORDER_RTR) {
+                    orderDroid(droid, DORDER_RTR);
+                }
+                return true;
+            }
+        }
     }
 
-    if (droid.order === DORDER_RTR && droid.health < 100) {
-        return true;
-    }
+    if (droid.health < percent) {
+        const facilities = repairFacilities !== undefined
+            ? repairFacilities
+            : enumStruct(me, REPAIR_FACILITY_STAT).filter(r => r.status === BUILT);
 
-    const repairFacilities = enumStruct(me, REPAIR_FACILITY_STAT);
+        if (facilities.length === 0) {
+            return false;
+        }
 
-    if (droid.order !== DORDER_RTR && repairFacilities.length > 0 && droid.health < percent) {
-        orderDroid(droid, DORDER_RTR);
-        return true;
+        // Pick the best Repair Facility balancing distance and current queue load (avoids crowding a single facility)
+        let bestFacility = null;
+        let bestScore = 999999;
+
+        for (const fac of facilities) {
+            if (!droidCanReach(droid, fac.x, fac.y)) continue;
+
+            const dist = distBetweenTwoPoints(droid.x, droid.y, fac.x, fac.y);
+            // Count already-queued droids around this facility + droids assigned during this tick
+            const nearbyDamaged = loadMap && loadMap.has(fac.id)
+                ? loadMap.get(fac.id)
+                : enumRange(fac.x, fac.y, 8, me, false).filter(o => o.type === DROID && o.health < 95).length;
+
+            // Each waiting droid adds an equivalent penalty of 18 tiles of distance
+            const score = dist + (nearbyDamaged * 18);
+            if (score < bestScore) {
+                bestScore = score;
+                bestFacility = fac;
+            }
+        }
+
+        if (bestFacility) {
+            if (loadMap) {
+                loadMap.set(bestFacility.id, (loadMap.get(bestFacility.id) ?? 0) + 1);
+            }
+            if (typeof DORDER_RTR_SPECIFIED !== "undefined") {
+                orderDroidObj(droid, DORDER_RTR_SPECIFIED, bestFacility);
+            } else {
+                // Move directly to the chosen least-crowded repair facility; once within 5 tiles, DORDER_RTR snaps to it
+                orderDroidLoc(droid, DORDER_MOVE, bestFacility.x, bestFacility.y);
+            }
+            return true;
+        }
     }
 
     return false;
@@ -388,16 +515,75 @@ function droidNeedsRepair(droid, percent) {
 
 // Function to order droids to attack the target
 function sendDroidsToAttackTarget(droids, target) {
+    const repairFacilities = enumStruct(me, REPAIR_FACILITY_STAT).filter(r => r.status === BUILT);
+    const repairLoadMap = new Map();
+    for (const fac of repairFacilities) {
+        const waiting = enumRange(fac.x, fac.y, 8, me, false)
+            .filter(o => o.type === DROID && o.health < 95).length;
+        repairLoadMap.set(fac.id, waiting);
+    }
+
+    const sensors = enumDroid(me, DROID_SENSOR);
+    const activeSensor = sensors.length > 0 ? sensors[0] : null;
+
+    // Look for nearby wounded enemies around the target (within 8 tiles) so we can finish off low-HP units
+    // while strictly respecting each droid's minimum weapon range
+    const localEnemies = enumRange(target.x, target.y, 8, ENEMIES, true)
+        .filter(obj => obj.type === DROID || (obj.type === STRUCTURE && obj.stattype !== WALL))
+        .sort((a, b) => (a.health ?? 100) - (b.health ?? 100));
+
+    const DISTANCE_LIMITS = {
+        ROCKETS: getRocketRange(),
+        MACHINEGUN: getMachinegunRange(),
+        HOWITZERS: getHowitzerRange()
+    };
+
+    const weaponToLimit = new Map([
+        ...ROCKET_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.ROCKETS]),
+        ...MACHINEGUN_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.MACHINEGUN]),
+        ...HOWITZERS_WEAPON_LIST.map(w => [w, DISTANCE_LIMITS.HOWITZERS])
+    ]);
+
     for (let j = 0; j < droids.length; j++) {
         const droid = droids[j];
         if (droid.droidType === DROID_SENSOR) {
-            orderDroidObj(droid, DORDER_OBSERVE, target);
-        } else if (droid.order !== DORDER_RECYCLE && !droidNeedsRepair(droid)) {
-            if (droidCanReach(droid, target.x, target.y)) {
-                orderDroidObj(droid, DORDER_ATTACK, target);
-            } else {
+            if (droid.order !== DORDER_OBSERVE) {
+                orderDroidObj(droid, DORDER_OBSERVE, target);
+            }
+        } else if (droid.order !== DORDER_RECYCLE && !droidNeedsRepair(droid, repairFacilities, repairLoadMap)) {
+            const weaponName = droid.weapons?.[0]?.name;
+
+            // Link long-range howitzers to our active sensor droid if available
+            if (activeSensor && HOWITZERS_WEAPON_LIST.includes(weaponName)) {
+                if (droid.order !== DORDER_FIRESUPPORT) {
+                    orderDroidObj(droid, DORDER_FIRESUPPORT, activeSensor);
+                }
+                continue;
+            }
+
+            // Determine minimum safe distance for this droid's weapon
+            let minSafeRange = weaponToLimit.get(weaponName);
+            if (minSafeRange === undefined) {
+                minSafeRange = droid.droidType === DROID_CYBORG ? getCyborgRange(weaponName) : 5;
+            }
+
+            // Pick the lowest-health enemy near the target that stays at or beyond our safe range
+            let bestTarget = target;
+            if (!isMyBaseInTrouble && localEnemies.length > 0) {
+                for (const candidate of localEnemies) {
+                    const distToCandidate = distBetweenTwoPoints(droid.x, droid.y, candidate.x, candidate.y);
+                    if (distToCandidate >= minSafeRange && distToCandidate <= minSafeRange + 8) {
+                        bestTarget = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (droidCanReach(droid, bestTarget.x, bestTarget.y)) {
+                orderDroidObj(droid, DORDER_ATTACK, bestTarget);
+            } else if (droid.order !== DORDER_MOVE) {
                 // Can't reach target — move as close as possible instead of getting stuck
-                orderDroidLoc(droid, DORDER_MOVE, target.x, target.y);
+                orderDroidLoc(droid, DORDER_MOVE, bestTarget.x, bestTarget.y);
             }
         }
     }
@@ -439,12 +625,12 @@ function eventAttacked(victim, attacker) {
     // Check if the base is in trouble
     if (attacker.type === DROID || attacker.type === STRUCTURE) {
         if (attacker.type === DROID && attacker.isVTOL === true) {
-            enemiesHaveVtol = true;
+            enemiesHaveVTOLs = true;
         }
 
         if ((victim.type === STRUCTURE && isBaseStructure(victim.stattype)) ||
             (victim.stattype === DEFENSE && isNearBase(attacker.x, attacker.y))) {
-            const enemy = playerDataObject(attacker.player);
+            const enemy = attacker.player === scavengerIndex ? createScavengerPlayerData(scavengerIndex) : playerDataObject(attacker.player);
             setCurrentEnemy(enemy);
             isMyBaseInTrouble = true;
         }
@@ -453,7 +639,7 @@ function eventAttacked(victim, attacker) {
             if (attacker.player === scavengerIndex) {
                 const scavenger = createScavengerPlayerData(scavengerIndex);
                 setCurrentEnemy(scavenger);
-                return
+                return;
             }
 
             const enemy = playerDataObject(attacker.player);
@@ -474,7 +660,7 @@ function scanForVTOLs() {
 
 	for (let i = 0, l = visibleEnemyDroids.length; i < l; ++i)
 	{
-		if (isVTOL(visibleEnemyDroids[i]))
+		if (visibleEnemyDroids[i].isVTOL === true)
 		{
 			enemiesHaveVTOLs = true;
 			break;

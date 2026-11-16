@@ -8,6 +8,7 @@ function eventStartLevel() {
 	attackerGroup = newGroup()
 	bunkerBusterGroup = newGroup()
 	helperGroup = newGroup()
+	vtolGroup = newGroup()
 
 	enumDroid(me).forEach(droid => {
 		eventDroidBuilt(droid);
@@ -33,6 +34,14 @@ function eventStartLevel() {
 	// Set the current enemy
 	setCurrentEnemy()
 
+	// Kickstart early game actions immediately at tick 0 (crucial in Low Oil / No Bases)
+	if (reactionSpeedDelay === 0) {
+		lookForOil();
+		build();
+		produceDroids();
+		research();
+	}
+
 	// Set the timer call randomly so as not to calculate in the same tick.
 	setTimer("produceDroids", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))); // 1,5 Seconds
 	setTimer("research", reactionSpeedDelay + 1500 + ((1 + random(30)) * random(10))) // 1,5 Seconds
@@ -48,10 +57,12 @@ function eventStartLevel() {
 	setTimer("donateOil", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("checkAllies", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
 	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(33)) * random(88))) // 2 Minutes
-	setTimer("swapBuildersRole", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
-	setTimer("callIdleBuildersToBase", reactionSpeedDelay + 20000 + ((1 + random(30)) * random(10))) // 20 Seconds
+	setTimer("swapBuildersRole", reactionSpeedDelay + 10000 + ((1 + random(30)) * random(10))) // 10 Seconds
+	setTimer("callIdleBuildersToBase", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
 	setTimer("checkIfDead", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
 	setTimer("askForTruck", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))) // 2 Minutes
+	setTimer("scanForVTOLs", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))) // 15 Seconds
+	setTimer("recycleObsoleteUnits", reactionSpeedDelay + 45000 + ((1 + random(30)) * random(10))) // 45 Seconds
 }
 
 // BaseBuilders should be at least 5, the rest are focused at building defenses
@@ -80,24 +91,27 @@ function askForTruck() {
 	}
 }
 
-// Set the an enemy player as enemy to attack
+// Set the nearest enemy player as enemy to attack
 function setCurrentEnemy(enemyPlayerData) {
-	enemiesList = getAliveEnemyPlayersData()
+	enemiesList = getAliveEnemyPlayersData();
 
 	if (enemyPlayerData !== undefined) {
-		currentEnemy = enemyPlayerData
+		currentEnemy = enemyPlayerData;
 	} else if (enemiesList.length > 0) {
+		// Prioritize normal players over scavengers if available, and pick the closest enemy to our base
+		const regularEnemies = enemiesList.filter(e => e.position !== scavengerIndex);
+		const pool = regularEnemies.length > 0 ? regularEnemies : enemiesList;
 
-		if (enemiesList.length === 1 && enemiesList[0].position === scavengerPlayer) {
-			areAllEnemiesDead = true
-			shutdownScripts()
-			return
-		}
+		pool.sort((a, b) => {
+			if (!a.base || !b.base) return 0;
+			return distBetweenTwoPoints(BASE.x, BASE.y, a.base.x, a.base.y) -
+				   distBetweenTwoPoints(BASE.x, BASE.y, b.base.x, b.base.y);
+		});
 
-		currentEnemy = enemiesList[random(enemiesList.length)]
+		currentEnemy = pool[0];
 	} else {
-		areAllEnemiesDead = true
-		shutdownScripts()
+		areAllEnemiesDead = true;
+		shutdownScripts();
 	}
 }
 
@@ -117,6 +131,11 @@ function shutdownScripts() {
 	removeTimer("checkAllies")
 	removeTimer("checkForDefeatedAllies")
 	removeTimer("swapBuildersRole")
+	removeTimer("callIdleBuildersToBase")
+	removeTimer("checkIfDead")
+	removeTimer("askForTruck")
+	removeTimer("scanForVTOLs")
+	removeTimer("recycleObsoleteUnits")
 }
 
 function setDifficulty() {
@@ -149,10 +168,15 @@ function eventDroidBuilt(droid) {
 	}
 
 	if (droid.droidType === DROID_CONSTRUCT) {
-		if (enumGroup(baseBuildersGroup).length >= 5) {
-			groupAdd(defensesBuildersGroup, droid)
+		const baseBuildersCount = enumGroup(baseBuildersGroup).length;
+		const defBuildersCount = enumGroup(defensesBuildersGroup).length;
+
+		// Ensure we always have at least 1 dedicated defense builder as soon as we have 3+ trucks,
+		// and assign all trucks beyond 4 to defensesBuildersGroup so base defenses are never neglected
+		if (baseBuildersCount >= 4 || (baseBuildersCount >= 2 && defBuildersCount === 0)) {
+			groupAdd(defensesBuildersGroup, droid);
 		} else {
-			groupAdd(baseBuildersGroup, droid)
+			groupAdd(baseBuildersGroup, droid);
 		}
 
 		return;
@@ -164,8 +188,13 @@ function eventDroidBuilt(droid) {
 		return;
 	}
 
-	if (droid.droidType === DROID_WEAPON || droid.droidType === DROID_SENSOR || droid.droidType === DROID_CYBORG || droid.isVTOL === true) {
-		groupAdd(attackerGroup, droid)
+	if (droid.isVTOL === true) {
+		groupAdd(vtolGroup, droid);
+		return;
+	}
+
+	if (droid.droidType === DROID_WEAPON || droid.droidType === DROID_SENSOR || droid.droidType === DROID_CYBORG) {
+		groupAdd(attackerGroup, droid);
 		return;
 	}
 }
@@ -176,14 +205,35 @@ function eventObjectTransfer(obj, from) {
 		if (currentlyDead) {
 			BASE = startPositions[from];
 		}
-		let droid = obj
-		eventDroidBuilt(droid)
-		recycleOldBuilders()
-		chat(from, "Thank you for the gift <3")
+		let droid = obj;
+		eventDroidBuilt(droid);
+		recycleOldBuilders();
+		chat(from, "Thank you for the gift <3");
 	}
 }
 
 // The parameter "to" is always "me"
 function eventBeacon(x, y, from, to, message) {
+	if (from === me || !friendlyPlayer(from)) {
+		return;
+	}
 
+	// Check if the beacon is near an ally's base (ally requesting defense)
+	const ally = alliesList.find(a => a.position === from);
+	if (ally && ally.base && distBetweenTwoPoints(x, y, ally.base.x, ally.base.y) <= BASE_THREAT_RANGE * 1.5) {
+		if (!isHelpingAlly && !isMyBaseInTrouble) {
+			helpAlly(ally);
+		}
+		return;
+	}
+
+	// Otherwise, check if the beacon points at an enemy base or enemy units (ally requesting coordinated attack)
+	const nearbyEnemies = enumRange(x, y, 20, ENEMIES, false);
+	if (nearbyEnemies.length > 0) {
+		const targetPlayer = nearbyEnemies[0].player;
+		const enemyData = targetPlayer === scavengerIndex ? createScavengerPlayerData(scavengerIndex) : playerDataObject(targetPlayer);
+		if (enemyData) {
+			setCurrentEnemy(enemyData);
+		}
+	}
 }

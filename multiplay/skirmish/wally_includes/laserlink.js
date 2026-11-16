@@ -16,11 +16,14 @@ function eventStructureReady(structure) {
 
 	if (struct) {
 		const obj = getObject(struct.typeInfo, struct.playerInfo, struct.idInfo);
+		if (!obj) {
+			queue("eventStructureReady", RETRY_TIME, structure);
+			return;
+		}
 
 		activateStructure(structure, obj);
 		
-		const playerName = playerData[obj.player].name
-		const enemyPlayerName = playerName ?? "Hmmm"
+		const enemyPlayerName = getPlayerName(obj.player) ?? "Hmmm";
 		chat(ALL_PLAYERS, `${enemyPlayerName}... Laser is ready, I aim it steady!`);
 	} else {
 		queue("eventStructureReady", RETRY_TIME, structure);
@@ -28,7 +31,7 @@ function eventStructureReady(structure) {
 }
 
 function returnClosestEnemyStructure() {
-    let enemyIndex = currentEnemy.position;
+    let enemyIndex = currentEnemy ? currentEnemy.position : undefined;
 
     if (enemyIndex === undefined) {
         const aliveEnemies = getAliveEnemyPlayersData();
@@ -39,12 +42,25 @@ function returnClosestEnemyStructure() {
     }
 
     if (enemyIndex !== undefined) {
-        const structureTypes = [LASSAT, HQ, FACTORY, CYBORG_FACTORY, VTOL_FACTORY, null];
+        const structureTypes = [LASSAT, VTOL_FACTORY, FACTORY, CYBORG_FACTORY, HQ, null];
 
         for (const type of structureTypes) {
             const structs = type ? enumStruct(enemyIndex, type) : enumStruct(enemyIndex);
             if (structs.length > 0) {
-                return objectInformation(structs[0]);
+                // Pick the structure surrounded by the highest concentration of enemy objects (maximizes LasSat splash damage)
+                let bestStruct = structs[0];
+                let maxDensity = -1;
+
+                for (let i = 0; i < Math.min(structs.length, 10); i++) {
+                    const s = structs[i];
+                    const density = enumRange(s.x, s.y, 6, ENEMIES, false).length;
+                    if (density > maxDensity) {
+                        maxDensity = density;
+                        bestStruct = s;
+                    }
+                }
+
+                return objectInformation(bestStruct);
             }
         }
     }

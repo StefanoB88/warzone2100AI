@@ -42,21 +42,22 @@ function produceDroids() {
 
                     // Standard factories: Build trucks or attackers
                     if (numTrucks < desiredTrucks) {
-                        produceBuilder(factory); // Build a truck
+                        if (produceBuilder(factory)) {
+                            virtualTrucks += 1;
+                        }
+                    } else if (random(100) < createSensorProbability()) {
+                        produceSensors(factory); // Occasionally build sensors
                     } else {
                         produceTank(factory); // Build an attacker unit
-
-                        // Occasionally build sensors
-						if (random(100) < createSensorProbability()) {
-							produceSensors(factory);
-						}
                     }
                 } else {
                     if (FAC_LIST[i] === CYBORG_FACTORY_STAT) {
 						const shouldBuildCyborgConstructor = numTrucks < desiredTrucks && !countStruct(FACTORY_STAT, me);
 
 						if (shouldBuildCyborgConstructor) {
-							produceCyborgBuilder(factory); // Build cyborg builder units
+							if (produceCyborgBuilder(factory)) {
+								virtualTrucks += 1;
+							}
 						} else {
 							produceCyborg(factory); // Build cyborg units
 						}
@@ -90,6 +91,7 @@ function produceTank(factory) {
     const THERMAL_BODY_PROBABILITY = checkFlameWeapons()
     const BUNKER_BUSTER_PROBABILITY = isMyBaseInTrouble ? 0 : checkCurrentEnemyDefenses()
     const HOWITZERS_WEAPON_PROBABILITY = checkLongRangeSupport()
+    const ANTI_AIR_PROBABILITY = enemiesHaveVTOLs ? 15 : 0
 
     let FAST_PROP_PROBABILITY = 0
 
@@ -110,19 +112,22 @@ function produceTank(factory) {
         tankProp = "HalfTrack"
     }
     
-    if (random(100) < ANTIPERSONELL_WEAPON_PROBABILITY) {
-        firstWeapon = MACHINEGUN_WEAPON_LIST;
-    } else if (random(100) < ANTITANK_WEAPON_PROBABILITY) {
-        firstWeapon = ROCKET_WEAPON_LIST;
+    if (random(100) < ANTI_AIR_PROBABILITY) {
+        firstWeapon = AA_WEAPON_LIST;
+        secondWeapon = AA_WEAPON_LIST;
     } else if (random(100) < BUNKER_BUSTER_PROBABILITY) {
-        firstWeapon = BUNKER_BUSTER_WEAPON
-        secondWeapon = BUNKER_BUSTER_WEAPON
-        tankProp = "hover01"
+        firstWeapon = BUNKER_BUSTER_WEAPON;
+        secondWeapon = BUNKER_BUSTER_WEAPON;
+        tankProp = "hover01";
     } else if (random(100) < HOWITZERS_WEAPON_PROBABILITY) {
-        firstWeapon = HOWITZERS_WEAPON_LIST
-        secondWeapon = HOWITZERS_WEAPON_LIST
-        tankProp = "hover01"
-        tankBody = TANK_MEDIUM_BODY_LIST
+        firstWeapon = HOWITZERS_WEAPON_LIST;
+        secondWeapon = HOWITZERS_WEAPON_LIST;
+        tankProp = "hover01";
+        tankBody = TANK_MEDIUM_BODY_LIST;
+    } else if (random(100) < ANTIPERSONELL_WEAPON_PROBABILITY) {
+        firstWeapon = MACHINEGUN_WEAPON_LIST;
+    } else {
+        firstWeapon = ROCKET_WEAPON_LIST;
     }
     
     if (isSeaMap === true) {
@@ -144,18 +149,17 @@ function produceCyborgBuilder(factory) {
 }
 
 function produceCyborg(factory) {
-    const CYBORG_ANTIPERSONELL_WEAPON_PROBABILITY = 30
-    const CYBORG_ANTITANK_WEAPON_PROBABILITY = 70
+    const CYBORG_ANTITANK_WEAPON_PROBABILITY = 70;
 
     if (random(100) < CYBORG_ANTITANK_WEAPON_PROBABILITY) {
         if (createDroid(factory, "Cyborg Heavy Rocket", "CyborgHeavyBody", "CyborgLegs", CYBORG_HEAVY_ROCKETS)) {
-            return
+            return true;
         } else {
             return createDroid(factory, "Cyborg Rocket", "CyborgLightBody", "CyborgLegs", CYBORG_LIGHT_ROCKETS);
         }
-    } else if (random(100) < CYBORG_ANTIPERSONELL_WEAPON_PROBABILITY) {
+    } else {
         if (createDroid(factory, "Cyborg Laser", "CyborgHeavyBody", "CyborgLegs", CYBORG_HEAVY_LASER)) {
-            return
+            return true;
         } else {
             return createDroid(factory, "Cyborg Machinegun", "CyborgLightBody", "CyborgLegs", CYBORG__LIGHT_MACHINEGUN);
         }
@@ -163,7 +167,7 @@ function produceCyborg(factory) {
 }
 
 function produceVTOL(factory) {
-    return createDroid(factory, "VTOL", TANK_BODY_LIST, "V-Tol", VTOL_ROCKETS)
+    return createDroid(factory, "VTOL Bomber", TANK_BODY_LIST, "V-Tol", VTOL_WEAPONS);
 }
 
 /**
@@ -233,6 +237,48 @@ function checkTrucksCount() {
         excessBuilders.forEach(builder => {
             orderDroid(builder, DORDER_RECYCLE);
         });
+    }
+}
+
+// Recycle obsolete T1 units in late game to transfer veteran experience to heavy T3/T4 tanks
+// and ensure we never get stuck at the 150 unit cap without trucks.
+function recycleObsoleteUnits() {
+    const totalDroids = countDroid(DROID_ANY, me);
+    const numTrucks = countDroid(DROID_CONSTRUCT, me);
+
+    // Emergency Unit Cap protection: if we are near the 150 droid cap and lack trucks, free up slots immediately
+    if (totalDroids >= 142 && numTrucks < 2) {
+        const combatDroids = enumGroup(attackerGroup);
+        for (let i = 0; i < Math.min(3, combatDroids.length); i++) {
+            orderDroid(combatDroids[i], DORDER_RECYCLE);
+        }
+        return;
+    }
+
+    // Only recycle obsolete combat units if base is safe, we have good power, and heavy bodies are unlocked
+    if (isMyBaseInTrouble || getRealPower() < 800) {
+        return;
+    }
+
+    const hasHeavyBodies = componentAvailable("Body9REC") || componentAvailable("Body10MBT") || componentAvailable("Body14SUP");
+    if (!hasHeavyBodies) {
+        return;
+    }
+
+    const OBSOLETE_BODIES = ["Body1REC", "Body4ABT"]; // Viper and Bug
+    const attackers = enumGroup(attackerGroup);
+    if (attackers.length < 25) {
+        return; // Keep army size healthy before recycling
+    }
+
+    let recycled = 0;
+    for (const droid of attackers) {
+        if (droid.order === DORDER_RECYCLE) continue;
+        if (OBSOLETE_BODIES.includes(droid.body)) {
+            orderDroid(droid, DORDER_RECYCLE);
+            recycled++;
+            if (recycled >= 2) break; // Recycle at most 2 per cycle so we don't weaken the frontline
+        }
     }
 }
 

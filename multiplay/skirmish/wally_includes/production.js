@@ -37,18 +37,33 @@ function produceDroids() {
 
                 const numTrucks = countDroid(DROID_CONSTRUCT) + virtualTrucks;
                 const desiredTrucks = getDesiredTruckCount();
+                const currentPower = getRealPower();
+                const armySize = enumGroup(attackerGroup).length;
+
+                // Check if any research lab is sitting idle waiting for power
+                const hasIdleLab = !researchDone && enumStruct(me, RES_LAB_STAT).some(
+                    lab => lab.status === BUILT && structureIdle(lab)
+                );
+
+                // Allow combat production when power is healthy, or if base is in danger, or if we have < 4 units to defend early game.
+                // If a research lab is idle and we are low on power (< 150) and not in danger, pause unit production so research can start!
+                const canAffordCombatUnit = isMyBaseInTrouble ||
+                    (armySize < 4 && currentPower > -50) ||
+                    (currentPower >= MIN_PRODUCTION_POWER && (!hasIdleLab || currentPower >= 150));
 
                 if (FAC_LIST[i] === FACTORY_STAT) {
 
-                    // Standard factories: Build trucks or attackers
+                    // Standard factories: Always prioritize essential trucks, then check if we can afford combat units
                     if (numTrucks < desiredTrucks) {
                         if (produceBuilder(factory)) {
                             virtualTrucks += 1;
                         }
-                    } else if (random(100) < createSensorProbability()) {
-                        produceSensors(factory); // Occasionally build sensors
-                    } else {
-                        produceTank(factory); // Build an attacker unit
+                    } else if (canAffordCombatUnit) {
+                        if (random(100) < createSensorProbability()) {
+                            produceSensors(factory); // Occasionally build sensors
+                        } else {
+                            produceTank(factory); // Build an attacker unit
+                        }
                     }
                 } else {
                     if (FAC_LIST[i] === CYBORG_FACTORY_STAT) {
@@ -58,12 +73,12 @@ function produceDroids() {
 							if (produceCyborgBuilder(factory)) {
 								virtualTrucks += 1;
 							}
-						} else {
+						} else if (canAffordCombatUnit) {
 							produceCyborg(factory); // Build cyborg units
 						}
 					} else {
-                        // For VTOL factory, ensure power generator exists
-                        if (!countStruct(POW_GEN_STAT)) {
+                        // For VTOL factory, ensure power generator exists and we can afford combat units
+                        if (!countStruct(POW_GEN_STAT) || !canAffordCombatUnit) {
                             continue;
                         }
                         produceVTOL(factory); // Build VTOL units

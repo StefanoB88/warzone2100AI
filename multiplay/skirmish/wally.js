@@ -22,7 +22,7 @@ const MIN_BASE_TRUCKS = 2;
 const MAX_BASE_TRUCKS = 12;
 const MIN_BUILD_POWER = 30;
 const MIN_RESEARCH_POWER = -50;
-const MIN_PRODUCTION_POWER = -25;
+const MIN_PRODUCTION_POWER = 60;
 const BASE_THREAT_RANGE = Math.ceil(17 + (mapWidth + mapHeight) / 2 / 20);
 var BASE = startPositions[me];
 var baseBuildersGroup;

@@ -39,8 +39,7 @@ function research() {
     // Don't research if:
     // We don't have builders
     // We finished all the researches
-    // We don't have enough power at all
-    if (!countDroid(DROID_CONSTRUCT) || researchDone || getRealPower() < MIN_RESEARCH_POWER) {
+    if (!countDroid(DROID_CONSTRUCT) || researchDone) {
         return;
     }
 
@@ -49,6 +48,14 @@ function research() {
     ));
 
     if (labList.length === 0) {
+        return;
+    }
+
+    // Always allow at least 1 research lab to start researching even when power is low,
+    // and require MIN_RESEARCH_POWER only when running multiple labs simultaneously
+    const totalLabs = enumStruct(me, RES_LAB_STAT).filter(lab => lab.status === BUILT).length;
+    const busyLabs = totalLabs - labList.length;
+    if (busyLabs >= 1 && getRealPower() < MIN_RESEARCH_POWER) {
         return;
     }
 
@@ -95,8 +102,15 @@ function research() {
         FUNDAMENTALS_UPGRADES_T4
     ].filter(Boolean); // Removes any null values
 
-    // List of all possible research items if nothing else is found
+    // List of all currently available research items
     const allResearchList = enumResearch();
+    if (allResearchList.length === 0) {
+        // Only mark researchDone if we have at least one lab built and there is truly nothing left to research
+        if (gameTime > 60000) {
+            researchDone = true;
+        }
+        return;
+    }
 
     for (let lab of labList) {
         let found = false;
@@ -108,13 +122,12 @@ function research() {
         }
 
         // Last step: research a random item if no other research was found
-        if (!found && allResearchList.length > 0) {
-            const idx = Math.floor(Math.random() * allResearchList.length);
-            pursueResearch(lab, allResearchList[idx].name);
+        if (!found) {
+            const currentAvailable = enumResearch();
+            if (currentAvailable.length > 0) {
+                const idx = Math.floor(Math.random() * currentAvailable.length);
+                pursueResearch(lab, currentAvailable[idx].name);
+            }
         }
-    }
-
-    if (allResearchList.length === 0) {
-        researchDone = true
     }
 }

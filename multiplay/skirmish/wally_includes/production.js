@@ -94,29 +94,21 @@ function produceBuilder(factory) {
 }
 
 function produceTank(factory) {
-    // Default components
+    // Default components (strictly Rockets and Machineguns/Lasers only — no cannons, mortars, or howitzers)
     let firstWeapon = ROCKET_WEAPON_LIST
     let secondWeapon = ROCKET_WEAPON_LIST
     let tankProp = TANK_PROP_LIST
     let tankBody = TANK_BODY_LIST
 
     // Components with probability
-    const ANTIPERSONELL_WEAPON_PROBABILITY = 60
-    const ANTITANK_WEAPON_PROBABILITY = 40
+    const ANTIPERSONELL_WEAPON_PROBABILITY = checkEnemyAntiPersonnelProbability()
     const THERMAL_BODY_PROBABILITY = checkFlameWeapons()
     const BUNKER_BUSTER_PROBABILITY = isMyBaseInTrouble ? 0 : checkCurrentEnemyDefenses()
-    const HOWITZERS_WEAPON_PROBABILITY = checkLongRangeSupport()
-    const ANTI_AIR_PROBABILITY = enemiesHaveVTOLs ? 15 : 0
 
     let FAST_PROP_PROBABILITY = 0
 
     if (isSeaMap === false) {
         FAST_PROP_PROBABILITY = checkTankKillerWeapons()
-    }
-
-    // When dragon is available, try a chance at using EMP-Cannon as secondary.
-	if (componentAvailable("Body14SUP") && componentAvailable("EMP-Cannon")) {
-        secondWeapon = "EMP-Cannon";
     }
 
     if (random(100) < THERMAL_BODY_PROBABILITY) {
@@ -127,29 +119,35 @@ function produceTank(factory) {
         tankProp = "HalfTrack"
     }
     
-    if (random(100) < ANTI_AIR_PROBABILITY) {
-        firstWeapon = AA_WEAPON_LIST;
-        secondWeapon = AA_WEAPON_LIST;
-    } else if (random(100) < BUNKER_BUSTER_PROBABILITY) {
+    if (random(100) < BUNKER_BUSTER_PROBABILITY) {
         firstWeapon = BUNKER_BUSTER_WEAPON;
         secondWeapon = BUNKER_BUSTER_WEAPON;
         tankProp = "hover01";
-    } else if (random(100) < HOWITZERS_WEAPON_PROBABILITY) {
-        firstWeapon = HOWITZERS_WEAPON_LIST;
-        secondWeapon = HOWITZERS_WEAPON_LIST;
-        tankProp = "hover01";
-        tankBody = TANK_MEDIUM_BODY_LIST;
     } else if (random(100) < ANTIPERSONELL_WEAPON_PROBABILITY) {
         firstWeapon = MACHINEGUN_WEAPON_LIST;
+        secondWeapon = MACHINEGUN_WEAPON_LIST;
     } else {
         firstWeapon = ROCKET_WEAPON_LIST;
+        secondWeapon = ROCKET_WEAPON_LIST;
     }
     
-    if (isSeaMap === true) {
+    // Use Hover propulsion if map is a sea map OR if the current enemy's base cannot be reached by land propulsion
+    const enemyUnreachableByLand = currentEnemy && currentEnemy.base && componentAvailable("hover01") &&
+        !propulsionCanReach("wheeled01", BASE.x, BASE.y, currentEnemy.base.x, currentEnemy.base.y);
+
+    if (isSeaMap === true || enemyUnreachableByLand) {
         tankProp = "hover01"
     }
 
-    return createDroid(factory, "Attacker", tankBody, tankProp, firstWeapon, secondWeapon)
+    if (createDroid(factory, "Attacker", tankBody, tankProp, firstWeapon, secondWeapon)) {
+        return true;
+    }
+
+    // Fallback: if the rolled weapon/propulsion isn't researched yet (e.g. No Research start),
+    // try any available Machinegun or Rocket weapon with standard TANK_PROP_LIST so the factory never sits idle
+    const fallbackWeapons = MACHINEGUN_WEAPON_LIST.concat(ROCKET_WEAPON_LIST);
+    const fallbackProp = (isSeaMap === true || enemyUnreachableByLand) ? ["hover01", ...TANK_PROP_LIST] : TANK_PROP_LIST;
+    return createDroid(factory, "Attacker", TANK_BODY_LIST, fallbackProp, fallbackWeapons, fallbackWeapons);
 }
 
 function produceSensors(factory) {
@@ -169,15 +167,27 @@ function produceCyborg(factory) {
     if (random(100) < CYBORG_ANTITANK_WEAPON_PROBABILITY) {
         if (createDroid(factory, "Cyborg Heavy Rocket", "CyborgHeavyBody", "CyborgLegs", CYBORG_HEAVY_ROCKETS)) {
             return true;
-        } else {
-            return createDroid(factory, "Cyborg Rocket", "CyborgLightBody", "CyborgLegs", CYBORG_LIGHT_ROCKETS);
         }
+        if (createDroid(factory, "Cyborg Rocket", "CyborgLightBody", "CyborgLegs", CYBORG_LIGHT_ROCKETS)) {
+            return true;
+        }
+        // Fallback to Laser / Machinegun Cyborgs if Rocket Cyborgs are not yet researched (early T1)
+        if (createDroid(factory, "Cyborg Laser", "CyborgHeavyBody", "CyborgLegs", CYBORG_HEAVY_LASER)) {
+            return true;
+        }
+        return createDroid(factory, "Cyborg Machinegun", "CyborgLightBody", "CyborgLegs", CYBORG__LIGHT_MACHINEGUN);
     } else {
         if (createDroid(factory, "Cyborg Laser", "CyborgHeavyBody", "CyborgLegs", CYBORG_HEAVY_LASER)) {
             return true;
-        } else {
-            return createDroid(factory, "Cyborg Machinegun", "CyborgLightBody", "CyborgLegs", CYBORG__LIGHT_MACHINEGUN);
         }
+        if (createDroid(factory, "Cyborg Machinegun", "CyborgLightBody", "CyborgLegs", CYBORG__LIGHT_MACHINEGUN)) {
+            return true;
+        }
+        // Fallback to Rocket Cyborgs if Machinegun Cyborgs are unavailable
+        if (createDroid(factory, "Cyborg Heavy Rocket", "CyborgHeavyBody", "CyborgLegs", CYBORG_HEAVY_ROCKETS)) {
+            return true;
+        }
+        return createDroid(factory, "Cyborg Rocket", "CyborgLightBody", "CyborgLegs", CYBORG_LIGHT_ROCKETS);
     }
 }
 

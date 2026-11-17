@@ -37,6 +37,30 @@ function checkTankKillerWeapons() {
     );
 }
 
+// Dynamically adjust Anti-Personnel (MG/Laser) vs Anti-Tank (Rockets) ratio based on enemy unit composition
+function checkEnemyAntiPersonnelProbability() {
+    if (!currentEnemy || currentEnemy.position === undefined) {
+        return 60;
+    }
+
+    const enemyTanks = enumDroid(currentEnemy.position, DROID_WEAPON).length;
+    const enemyCyborgs = enumDroid(currentEnemy.position, DROID_CYBORG).length;
+    const totalCombat = enemyTanks + enemyCyborgs;
+
+    if (totalCombat < 5) {
+        return 60; // Default early game favors MG/Lasers
+    }
+
+    const cyborgRatio = (enemyCyborgs / totalCombat) * 100;
+    if (cyborgRatio >= 45) {
+        return 70; // Heavy cyborg enemy -> 70% Anti-Personnel (MG/Lasers)
+    } else if (cyborgRatio <= 20) {
+        return 35; // Tank-heavy enemy -> 35% Anti-Personnel, 65% Anti-Tank Rockets
+    }
+
+    return 55;
+}
+
 // If the enemies have defenses and our army is close enough to engage them, produce some bunker busters
 function checkCurrentEnemyDefenses() {
     if (!currentEnemy || currentEnemy.position === undefined) {

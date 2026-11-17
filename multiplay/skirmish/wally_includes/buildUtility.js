@@ -26,6 +26,7 @@ const SENSORS_TOWERS = [
 const WEAK_DEFENSES = [
 	"GuardTower6", // Mini-Rocket Tower
 	"PillBox1", // Heavy Machinegun Bunker
+	"GuardTower1", // Machinegun Guard Tower (early T1 fallback)
 ]
 
 const MEDIUM_DEFENSES = [

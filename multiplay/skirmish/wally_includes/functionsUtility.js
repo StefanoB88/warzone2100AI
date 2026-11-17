@@ -26,25 +26,17 @@ function playerDataObject(playerIndex) {
 
 function isHoverMap() {
     for (let i = 0; i < maxPlayers; ++i) {
-        // If propulsion cannot reach the starting position of player i from BASE
+        if (i === me || !startPositions[i]) continue;
+
+        // If wheeled propulsion cannot reach player i's starting position, but hover can, it's a hover/water map
         if (!propulsionCanReach("wheeled01", BASE.x, BASE.y, startPositions[i].x, startPositions[i].y)) {
-            let temp = 0;
-
-            // Loop through all players' positions
-            for (let t = 0; t < maxPlayers; ++t) {
-                if (i !== t && !propulsionCanReach("hover01", startPositions[i].x, startPositions[i].y, startPositions[t].x, startPositions[t].y)) {
-                    temp++;
-                }
-            }
-
-            // If at least one other player's position cannot be reached by hover
-            if (temp !== maxPlayers - 1) {
-                return true; // Exit early, no need to continue checking
+            if (propulsionCanReach("hover01", BASE.x, BASE.y, startPositions[i].x, startPositions[i].y)) {
+                return true;
             }
         }
     }
 
-    return false; // If no conditions are met, return false
+    return false;
 }
 
 // Return a number in the range of 0 to (max - 1).
@@ -249,34 +241,81 @@ function isUnsafeEnemyObject(obj) {
 		return true;
 	}
 
-	// Any defense or production facility makes the area unsafe
-	if (obj.type === STRUCTURE && obj.status === BUILT) {
-		const dangerousStats = [DEFENSE, FACTORY, CYBORG_FACTORY, VTOL_FACTORY, HQ];
+	// Any enemy structure (even a derrick, unfinished defense, or scavenger bunker) means enemy presence
+	if (obj.type === STRUCTURE) {
+		const dangerousStats = [DEFENSE, FACTORY, CYBORG_FACTORY, VTOL_FACTORY, HQ, RESOURCE_EXTRACTOR];
 		return dangerousStats.includes(obj.stattype);
 	}
 
 	return false;
 }
 
-// Evaluates if an area at (x, y) is safe from enemy units, defenses, and the enemy base
+// Records a dangerous zone for 2 minutes when a truck or remote structure is attacked/destroyed
+function markDangerZone(x, y, durationMs = 120000) {
+	if (x === undefined || y === undefined || isNearBase(x, y)) return;
+	// Quantize to 8x8 tile sectors
+	const key = `${Math.floor(x / 8)}_${Math.floor(y / 8)}`;
+	dangerZones.set(key, gameTime + durationMs);
+}
+
+// Checks if (x, y) is near a recently recorded danger zone
+function isInDangerZone(x, y, radiusTiles = 16) {
+	if (!dangerZones || dangerZones.size === 0) return false;
+	for (const [key, expiry] of dangerZones.entries()) {
+		if (gameTime > expiry) {
+			dangerZones.delete(key);
+			continue;
+		}
+		const [gx, gy] = key.split("_").map(Number);
+		const zx = gx * 8 + 4;
+		const zy = gy * 8 + 4;
+		if (distBetweenTwoPoints(x, y, zx, zy) <= radiusTiles) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Evaluates if an area at (x, y) is safe from ALL enemy bases, enemy units/structures, and recent ambushes
 function isAreaSafe(x, y, range = 18) {
 	if (x === undefined || y === undefined) {
 		return false;
 	}
 
-	// Check if too close to the current enemy base
-	if (currentEnemy && currentEnemy.base) {
-		if (distBetweenTwoPoints(x, y, currentEnemy.base.x, currentEnemy.base.y) < 25) {
+	// 1. Check if the location was recently the site of an ambush on our trucks/derricks
+	if (isInDangerZone(x, y, range)) {
+		return false;
+	}
+
+	// 2. Check distance against ALL alive enemy bases (not just currentEnemy!)
+	const myDistToPoint = distBetweenTwoPoints(BASE.x, BASE.y, x, y);
+	for (const enemy of enemiesList) {
+		if (!enemy || !enemy.base) continue;
+		const enemyDistToPoint = distBetweenTwoPoints(enemy.base.x, enemy.base.y, x, y);
+
+		// Never send trucks within 28 tiles of any enemy base
+		if (enemyDistToPoint < 28) {
 			return false;
+		}
+
+		// If the point is closer to an enemy base than to our base, only consider it safe if our/allied combat units are nearby guarding it
+		if (enemyDistToPoint < myDistToPoint && myDistToPoint > BASE_THREAT_RANGE) {
+			const localFriendlyGuards = enumRange(x, y, 14, ALLIES, false)
+				.concat(enumRange(x, y, 14, me, false))
+				.filter(o => o.type === DROID && (o.droidType === DROID_WEAPON || o.droidType === DROID_CYBORG)).length;
+			if (localFriendlyGuards < 3) {
+				return false;
+			}
 		}
 	}
 
-	// Check if there are any dangerous enemy droids or structures in range, or if we are outnumbered
+	// 3. Check if there are any dangerous enemy droids or structures in range
 	const hasUnsafeObjects = enumRange(x, y, range, ENEMIES, false).some(isUnsafeEnemyObject);
 	if (hasUnsafeObjects) {
 		return false;
 	}
 
+	// 4. Local combat balance check (compare local enemies against local friendly units, NOT global map units)
 	return numWeapObjectsInRange(x, y, ENEMIES, me, range, false);
 }
 
@@ -295,9 +334,18 @@ function numWeapObjectsInRange(x, y, enemies, allyIndex, scanRadius, visible) {
 		visible = false;
 	}
 
-	let allyDroids = enumDroid(allyIndex, DROID_WEAPON).concat(enumDroid(allyIndex, DROID_CYBORG));
-    let enemiesStuff = enumRange(x, y, scanRadius, enemies, visible);
+	// Count only friendly combat units that are actually within defensive range of (x, y)
+	const defenseScanRadius = Math.max(scanRadius, BASE_THREAT_RANGE);
+	const allyObjects = enumRange(x, y, defenseScanRadius, allyIndex, false);
+	let allyDroidsCount = 0;
+	for (let i = 0, l = allyObjects.length; i < l; ++i) {
+		const o = allyObjects[i];
+		if (o.type === DROID && (o.droidType === DROID_WEAPON || o.droidType === DROID_CYBORG)) {
+			allyDroidsCount++;
+		}
+	}
 
+    let enemiesStuff = enumRange(x, y, scanRadius, enemies, visible);
     let enemyDroidsCount = 0;
 
     for (let i = 0, l = enemiesStuff.length; i < l; ++i) {
@@ -308,7 +356,7 @@ function numWeapObjectsInRange(x, y, enemies, allyIndex, scanRadius, visible) {
         }
 	}
 
-	if (enemyDroidsCount > allyDroids.length) {
+	if (enemyDroidsCount > allyDroidsCount) {
 		isSafe = false;
 	}
 

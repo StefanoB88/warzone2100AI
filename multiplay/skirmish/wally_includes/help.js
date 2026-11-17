@@ -29,6 +29,8 @@ function checkAllyBaseInTrouble() {
 	}
 }
 
+var lastSorryChatTime = 0;
+
 // Returns true if the ally is helped, false otherwise
 function helpAlly(allyPlayerData) {
 	currentHelpedAlly = allyPlayerData
@@ -37,7 +39,10 @@ function helpAlly(allyPlayerData) {
 	const allAttackers = enumGroup(attackerGroup);
 
     if (allAttackers.length < 10) {
-		chat(ALLIES, `Sorry ${playerData.name}! I don't have enough units to help you right now.`);
+		if (gameTime - lastSorryChatTime > 120000) {
+			chat(ALLIES, `Sorry ${playerData.name}! I don't have enough units to help you right now.`);
+			lastSorryChatTime = gameTime;
+		}
 		return false; // Early exit if not enough droids
 	}
 

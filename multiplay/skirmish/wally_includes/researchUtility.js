@@ -4,11 +4,24 @@
 
 
 const START_COMPONENTS = [
-	"R-Vehicle-Body05", // Cobra
-	"R-Vehicle-Prop-Hover", // Hover
+	"R-Wpn-MG1Mk1", // Machinegun (unlocks immediate first tank turret & MG tower)
+	"R-Sys-Engineering01", // Engineering (unlocks modules, repair facility & engine path)
+	"R-Wpn-MG2Mk1", // Twin Machinegun
+	"R-Vehicle-Engine01", // Fuel Injection Engine Mk1
+	"R-Vehicle-Prop-Halftracks", // Half-tracked Propulsion (core tank propulsion)
+	"R-Wpn-Rocket05-MiniPod", // Mini-Rocket Pod (unlocks rocket tanks & rocket towers)
+	"R-Struc-Research-Module", // Research Module (accelerates all subsequent research)
+	"R-Struc-PowerModuleMk1", // Power Module (boosts power generation)
+	"R-Vehicle-Metals01", // Composite Alloys Mk1 (T1 armor, required for Cobra)
+	"R-Vehicle-Body04", // Bug light body
+	"R-Vehicle-Body05", // Cobra medium body (core T1/T2 tank body)
 	"R-Struc-RepairFacility", // Repair Facility
-	"R-Vehicle-Engine01", // T1 engine
-	"R-Vehicle-Metals01", // T1 armor
+	"R-Defense-Tower01", // Machinegun Guard Tower (earliest base defense)
+	"R-Defense-Tower06", // Mini-Rocket Guard Tower
+	"R-Defense-Pillbox01", // Heavy Machinegun Bunker
+	"R-Struc-Factory-Cyborg", // Cyborg Factory
+	"R-Struc-Factory-Module", // Factory Module
+	"R-Vehicle-Prop-Hover", // Hover Propulsion
 ]
 
 // ------------------ BODY ------------------
@@ -216,6 +229,9 @@ const AA_RESEARCH = [
 ]
 
 const FUNDAMENTALS_DEFENCE_T1 = [
+	"R-Defense-Tower01", // Machinegun Guard Tower
+	"R-Defense-Tower06", // Mini-Rocket Guard Tower
+	"R-Defense-Pillbox01", // Heavy Machinegun Bunker
 	"R-Defense-WallUpgrade03", // T1 defences upgrades
 ]
 

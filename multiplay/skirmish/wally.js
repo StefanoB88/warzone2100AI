@@ -42,13 +42,14 @@ var areAllEnemiesDead = false;
 var isHelpingAlly = false;
 
 // Returns the desired truck count based on current economy
+// Always maintain at least 5 trucks so base construction and oil capture happen in parallel without dead time
 function getDesiredTruckCount() {
 	const derricks = countStruct(DERRICK_STAT);
-	if (derricks >= 20) return 10;
-	if (derricks >= 12) return 7;
-	if (derricks >= 8) return 5;
-	if (derricks >= 4) return 3;
-	return 2;
+	if (derricks >= 20) return 11;
+	if (derricks >= 14) return 9;
+	if (derricks >= 8) return 7;
+	if (derricks >= 4) return 6;
+	return 5;
 }
 
 /**
@@ -73,6 +74,15 @@ var currentEnemy; // Current enemy Wally is attacking.
 var currentEnemyTarget; // Current enemy target Wally is attacking.
 
 var scavengerIndex = undefined;
+
+// Map of dangerous coordinates {"x_y": expirationGameTime} where our units/derricks were recently attacked
+var dangerZones = new Map();
+
+// Tracks pending build orders per truck {droidId -> {stat, x, y, time}} so trucks don't duplicate the same building while walking
+var pendingBuildOrders = new Map();
+
+// Tracks how long each truck has been stationary/idle {droidId -> {x, y, idleSince}} to recall trucks stuck/idle > 60s
+var truckIdleTracker = new Map();
 
 // Difficulty
 var reactionSpeedDelay = 0

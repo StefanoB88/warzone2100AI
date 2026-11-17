@@ -58,7 +58,8 @@ const TANK_BODY_LIST_THERMIC = [
 // ========================
 const TANK_PROP_LIST = [
     "tracked01", // track
-	"HalfTrack" // half-track
+	"HalfTrack", // half-track
+	"wheeled01" // wheels (early T1 fallback before Half-Tracks are researched)
 ];
 
 // ========================
@@ -98,6 +99,7 @@ const MACHINEGUN_WEAPON_LIST = [
 	"MG4ROTARYMk1", // Single assault gun
 	"MG3Mk1", // Heavy machine gun
 	"MG2Mk1", // Twin machine gun
+	"MG1Mk1" // Machine gun (early T1 fallback)
 ]
 
 // ========================
@@ -153,15 +155,4 @@ const VTOL_WEAPONS = [
 	"Bomb2-VTOL-HvHE", // HEAP Bomb Bay
 	"Bomb3-VTOL-LtINC", // Phosphor Bomb Bay
 	"Bomb1-VTOL-LtHE", // Cluster Bomb Bay
-];
-
-// ========================
-// ANTI-AIR TURRETS SECTION
-// ========================
-const AA_WEAPON_LIST = [
-	"Missile-HvySAM", // Vindicator SAM
-	"Missile-LtSAM", // Avenger SAM
-	"QuadRotAAGun", // Whirlwind AA
-	"AAGun2Mk1", // Cyclone Flak
-	"QuadMg1AAGun", // Hurricane AA
 ];

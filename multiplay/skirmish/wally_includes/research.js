@@ -88,7 +88,6 @@ function research() {
         FUNDAMENTALS_MACHINEGUN_WEAPON_T3,
         FUNDAMENTALS_BODY_T3,
         FUNDAMENTALS_VTOL_BOMBS_T3,
-        FUNDAMENTALS_HOWITZER_WEAPON,
         FUNDAMENTALS_PROPULSION_T3,
         FUNDAMENTALS_UPGRADES_T3,
         FUNDAMENTALS_DEFENCE_T3,
@@ -105,8 +104,10 @@ function research() {
     // List of all currently available research items
     const allResearchList = enumResearch();
     if (allResearchList.length === 0) {
-        // Only mark researchDone if we have at least one lab built and there is truly nothing left to research
-        if (gameTime > 60000) {
+        // IMPORTANT: In a "No Research" start, there are only a few root tech nodes at the beginning.
+        // If busyLabs > 0, other labs are currently researching prerequisites that will unlock the rest of the tree!
+        // Only mark researchDone if ALL labs are idle (busyLabs === 0) AND end-game Dragon body ("Body14SUP") is already unlocked.
+        if (busyLabs === 0 && totalLabs > 0 && componentAvailable("Body14SUP")) {
             researchDone = true;
         }
         return;
@@ -121,12 +122,20 @@ function research() {
             found = evalResearch(lab, researchCategory);
         }
 
-        // Last step: research a random item if no other research was found
+        // Last step: if all priority branches are currently locked by another lab's in-progress prerequisite,
+        // pick an available non-cannon/non-mortar/non-howitzer research item first
         if (!found) {
             const currentAvailable = enumResearch();
-            if (currentAvailable.length > 0) {
-                const idx = Math.floor(Math.random() * currentAvailable.length);
-                pursueResearch(lab, currentAvailable[idx].name);
+            const filteredAvailable = currentAvailable.filter(r =>
+                !r.name.includes("Cannon") &&
+                !r.name.includes("Mortar") &&
+                !r.name.includes("Howitzer") &&
+                !r.name.includes("Flame")
+            );
+            const pool = filteredAvailable.length > 0 ? filteredAvailable : currentAvailable;
+            if (pool.length > 0) {
+                const idx = Math.floor(Math.random() * pool.length);
+                pursueResearch(lab, pool[idx].name);
             }
         }
     }

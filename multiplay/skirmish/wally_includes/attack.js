@@ -31,6 +31,29 @@ function attack() {
     }
 }
 
+// Scores enemy ground units by relevance for VTOL bombers:
+// 1 = Mobile Anti-Air / Anti-VTOL tanks (highest threat to our VTOLs!)
+// 2 = Long-range Artillery / Howitzers / Sensors / Commanders (high-value backline targets)
+// 3 = Main Battle Tanks & Cyborgs (direct frontline support)
+// 4 = Constructor Trucks (economy & building denial)
+function getVTOLUnitPriority(droid) {
+    if (droid.droidType === DROID_CONSTRUCT) {
+        return 4;
+    }
+    if (droid.canHitAir === true) {
+        return 1; // Mobile AA tanks or multi-role anti-air units first!
+    }
+    const weapName = droid.weapons?.[0]?.name ?? "";
+    if (droid.droidType === DROID_SENSOR ||
+        droid.droidType === DROID_COMMAND ||
+        HOWITZERS_WEAPON_LIST.includes(weapName) ||
+        weapName.includes("Mortar") ||
+        weapName.includes("Howitzer")) {
+        return 2; // Long-range artillery & sensors second!
+    }
+    return 3; // Standard combat tanks & cyborgs third!
+}
+
 function manageVTOLs() {
     const vtols = enumGroup(vtolGroup);
     if (vtols.length === 0) return;
@@ -61,12 +84,47 @@ function manageVTOLs() {
         return;
     }
 
-    let target = currentEnemyTarget;
-    if (!target && currentEnemy && currentEnemy.position !== undefined) {
-        target = findNearestFactory(currentEnemy.position) || findNearestDerrick(currentEnemy.position);
+    let target = null;
+
+    if (currentEnemy && currentEnemy.position !== undefined) {
+        const enemyIdx = currentEnemy.position;
+
+        // Gather all ground enemy tanks, cyborgs, sensors, and trucks (strictly excluding enemy VTOLs!)
+        const enemyGroundUnits = enumDroid(enemyIdx, DROID_ANY, false)
+            .filter(d => !d.isVTOL && (
+                d.droidType === DROID_WEAPON ||
+                d.droidType === DROID_CYBORG ||
+                d.droidType === DROID_SENSOR ||
+                d.droidType === DROID_COMMAND ||
+                d.droidType === DROID_CONSTRUCT
+            ));
+
+        // Sort by VTOL relevance priority first (1: AA tanks -> 2: Artillery/Sensors -> 3: Combat Tanks/Cyborgs -> 4: Trucks),
+        // and then by closest distance to our base
+        enemyGroundUnits.sort((a, b) => {
+            const prioDiff = getVTOLUnitPriority(a) - getVTOLUnitPriority(b);
+            if (prioDiff !== 0) return prioDiff;
+            return distBetweenTwoPoints(BASE.x, BASE.y, a.x, a.y) - distBetweenTwoPoints(BASE.x, BASE.y, b.x, b.y);
+        });
+
+        // Prefer a high-priority ground unit that isn't sitting inside heavy static AA defenses
+        const safeUnitTarget = enemyGroundUnits.find(u =>
+            enumRange(u.x, u.y, 9, ENEMIES, true).filter(o => o.type === STRUCTURE && o.canHitAir === true).length <= 2
+        );
+
+        target = safeUnitTarget || enemyGroundUnits[0] || null;
+
+        // Fallback to enemy structures if the enemy has no ground units left
+        if (!target) {
+            const enemyFac = findNearestFactory(enemyIdx);
+            const enemyDerr = findNearestDerrick(enemyIdx);
+            const fallbackTarget = (currentEnemyTarget && !currentEnemyTarget.isVTOL) ? currentEnemyTarget : null;
+            const structCandidates = [enemyFac, enemyDerr, fallbackTarget].filter(Boolean);
+            target = structCandidates[0] || null;
+        }
     }
 
-    if (!target) return;
+    if (!target || target.isVTOL) return;
 
     const realTarget = getObject(target.type, target.player, target.id);
     if (!realTarget) return;
@@ -77,9 +135,9 @@ function manageVTOLs() {
 }
 
 function helpAttackEnemy(helperDroids, allyBasePos) {
-    // Find visible enemy combat units near the ally's base
+    // Find visible enemy ground combat units near the ally's base (ignore enemy VTOLs)
     const nearbyEnemies = enumRange(allyBasePos.x, allyBasePos.y, BASE_THREAT_RANGE * 2, ENEMIES, true)
-        .filter(obj => obj.type === DROID && (obj.droidType === DROID_WEAPON || obj.droidType === DROID_CYBORG));
+        .filter(obj => obj.type === DROID && !obj.isVTOL && (obj.droidType === DROID_WEAPON || obj.droidType === DROID_CYBORG));
 
     // Sort enemies by distance to ally base (closest threats first)
     nearbyEnemies.sort((a, b) => 
@@ -120,11 +178,14 @@ function attackEnemy(attackerDroids) {
 
     let sortFunc = sortByDistToBase;
 
+    // Ground combat units (strictly exclude enemy VTOLs so ground tanks never chase aircraft!)
     const enemyDroid = enumDroid(enemyIndex, DROID_WEAPON, false)
         .concat(enumDroid(enemyIndex, DROID_CYBORG, false))
+        .filter(d => !d.isVTOL)
         .sort(sortFunc)[0];
 
     const enemyTruck = enumDroid(enemyIndex, DROID_CONSTRUCT, false)
+        .filter(d => !d.isVTOL)
         .sort(sortByDistToBase)[0];
 
     const closestDefense = enumStruct(enemyIndex, DEFENSE)
@@ -166,6 +227,7 @@ function attackEnemy(attackerDroids) {
                 currentEnemyTarget = enemyStructs.sort(sortByDistToBase)[0];
             } else {
                 currentEnemyTarget = enumDroid(enemyIndex, DROID_ANY, false)
+                    .filter(d => !d.isVTOL)
                     .sort(sortByDistToBase)[0];
             }
         }
@@ -176,9 +238,9 @@ function attackEnemy(attackerDroids) {
         currentEnemyTarget = closestDefense;
     }
 
-    // If the enemy is the scavenger, attack all the structures and the visible droids
+    // If the enemy is the scavenger, attack all the structures and the visible ground droids
     if (enemyIndex === scavengerIndex) {
-        currentEnemyTarget = [...enumStruct(scavengerIndex), ...enumDroid(scavengerIndex, DROID_ANY, true)]
+        currentEnemyTarget = [...enumStruct(scavengerIndex), ...enumDroid(scavengerIndex, DROID_ANY, true).filter(d => !d.isVTOL)]
             .sort(sortByDistToBase)[0];
     }
 
@@ -526,10 +588,10 @@ function sendDroidsToAttackTarget(droids, target) {
     const sensors = enumDroid(me, DROID_SENSOR);
     const activeSensor = sensors.length > 0 ? sensors[0] : null;
 
-    // Look for nearby wounded enemies around the target (within 8 tiles) so we can finish off low-HP units
-    // while strictly respecting each droid's minimum weapon range
+    // Look for nearby wounded ground enemies around the target (within 8 tiles) so we can finish off low-HP units
+    // while strictly respecting each droid's minimum weapon range and ignoring enemy VTOLs
     const localEnemies = enumRange(target.x, target.y, 8, ENEMIES, true)
-        .filter(obj => obj.type === DROID || (obj.type === STRUCTURE && obj.stattype !== WALL))
+        .filter(obj => (obj.type === DROID && !obj.isVTOL) || (obj.type === STRUCTURE && obj.stattype !== WALL))
         .sort((a, b) => (a.health ?? 100) - (b.health ?? 100));
 
     const DISTANCE_LIMITS = {
@@ -622,6 +684,18 @@ function findNearestDerrick(player) {
 function eventAttacked(victim, attacker) {
     if (!attacker || !victim || attacker.player === me || allianceExistsBetween(attacker.player, me)) return;
 
+    // If a constructor truck or a remote derrick/structure outside our base is attacked,
+    // mark that sector as a danger zone and pull back any vulnerable trucks in that area!
+    if (victim.player === me && !isNearBase(victim.x, victim.y)) {
+        if ((victim.type === DROID && victim.droidType === DROID_CONSTRUCT) ||
+            (victim.type === STRUCTURE && victim.stattype === RESOURCE_EXTRACTOR)) {
+            markDangerZone(victim.x, victim.y, 120000);
+            if (victim.type === DROID && victim.order !== DORDER_RTB) {
+                orderDroid(victim, DORDER_RTB);
+            }
+        }
+    }
+
     // Check if the base is in trouble
     if (attacker.type === DROID || attacker.type === STRUCTURE) {
         if (attacker.type === DROID && attacker.isVTOL === true) {
@@ -648,22 +722,40 @@ function eventAttacked(victim, attacker) {
     }
 }
 
-// Check if enemies has VTOLs
+function eventDestroyed(object) {
+    if (!object || object.player !== me) return;
+
+    // If one of our trucks or derricks outside the base was destroyed, blacklist that area for 2.5 minutes
+    if (!isNearBase(object.x, object.y)) {
+        if ((object.type === DROID && object.droidType === DROID_CONSTRUCT) ||
+            (object.type === STRUCTURE && object.stattype === RESOURCE_EXTRACTOR)) {
+            markDangerZone(object.x, object.y, 150000);
+        }
+    }
+}
+
+// Check if enemies have VTOLs (or VTOL factories/pads) so we can prepare AA defenses in advance
 function scanForVTOLs() {
-	if (enemiesHaveVTOLs)
-	{
+	if (enemiesHaveVTOLs) {
 		removeTimer("scanForVTOLs");
 		return; // Already aware of VTOLs
 	}
 
-	var visibleEnemyDroids = enumDroid(ENEMIES, DROID_WEAPON, true);
+	for (const enemy of enemiesList) {
+		if (enemy.position === undefined) continue;
 
-	for (let i = 0, l = visibleEnemyDroids.length; i < l; ++i)
-	{
-		if (visibleEnemyDroids[i].isVTOL === true)
-		{
+		// Detect if enemy already built a VTOL Factory or VTOL Rearm Pad
+		if (countStruct(VTOL_FACTORY_STAT, enemy.position) > 0 || countStruct(VTOL_PAD_STAT, enemy.position) > 0) {
 			enemiesHaveVTOLs = true;
-			break;
+			return;
+		}
+
+		const enemyDroids = enumDroid(enemy.position, DROID_WEAPON, false);
+		for (let i = 0, l = enemyDroids.length; i < l; ++i) {
+			if (enemyDroids[i].isVTOL === true) {
+				enemiesHaveVTOLs = true;
+				return;
+			}
 		}
 	}
 }

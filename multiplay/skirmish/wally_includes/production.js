@@ -192,7 +192,7 @@ function produceCyborg(factory) {
 }
 
 function produceVTOL(factory) {
-    return createDroid(factory, "VTOL Bomber", TANK_BODY_LIST, "V-Tol", VTOL_WEAPONS);
+    return createDroid(factory, "VTOL Bomber", VTOL_BODY_LIST, "V-Tol", VTOL_WEAPONS);
 }
 
 /**
@@ -203,7 +203,10 @@ function produceVTOL(factory) {
  * @description Returns true if the production was started
  */
 function createDroid(factory, templateName, body, propulsion, turret1, turret2) {
-    return buildDroid(factory, templateName, body, propulsion, null, "", turret1, turret2)
+    if (turret2 !== undefined) {
+        return buildDroid(factory, templateName, body, propulsion, null, "", turret1, turret2);
+    }
+    return buildDroid(factory, templateName, body, propulsion, null, "", turret1);
 }
 
 // Build sensors according to the artillery number of the team, with a probability between a min of 3% and a max of 13%.

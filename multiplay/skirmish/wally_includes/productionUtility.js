@@ -149,6 +149,19 @@ const CYBORG_FLAMERS = [
 // ========================
 // VTOL BOMBS SECTION
 // ========================
+const VTOL_BODY_LIST = [
+	"Body7ABT", // Retribution
+	"Body10MBT", // Vengeance
+	"Body9REC", // Tiger
+	"Body12SUP", // Mantis
+	"Body8MBT", // Scorpion
+	"Body11ABT", // Python
+	"Body3MBT", // Retaliation
+	"Body5REC", // Cobra
+	"Body4ABT", // Bug
+	"Body1REC", // Viper
+];
+
 const VTOL_WEAPONS = [
 	"Bomb5-VTOL-Plasmite", // Plasmite Bomb Bay
 	"Bomb4-VTOL-HvyINC", // Thermite Bomb Bay

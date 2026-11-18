@@ -2,8 +2,10 @@
 	"AI": {
 		"js": "wally.js",
 		"name": "Wally",
-		"tip": "Tactical ally AI: range-based kiting, progressive forward defenses, cluster-bomb VTOLs, and active team support.",
-		"easy_tip": "Relaxed pace: each action has a 15-second reaction delay.",
-		"medium_tip": "Moderate pace: each action has a 5-second reaction delay."
+		"tip": "Smart, defensive and cooperative AI focused on rockets, machineguns, and VTOL bombs",
+		"easy_tip": "15 seconds delay on each action",
+		"medium_tip": "5 seconds delay on each action",
+		"hard_tip": "Normal speed, no delay",
+		"insane_tip": "Normal speed, no delay"
 	}
 }

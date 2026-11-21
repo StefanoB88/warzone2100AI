@@ -2,15 +2,15 @@
 
 const BUILDER_BODY_LIST = [
 	"Body3MBT", // Retaliation
-    "Body2SUP", // Leopard
-    "Body4ABT", // Bug
-    "Body1REC", // viper
-]
+	"Body2SUP", // Leopard
+	"Body4ABT", // Bug
+	"Body1REC", // viper
+];
 
 const BUILDER_PROP_LIST = [
-    "hover01", // Hover
+	"hover01", // Hover
 	"wheeled01", // Wheels
-]
+];
 
 const SCANNER_BODY_LIST = [
 	"Body7ABT", // Retribution
@@ -18,7 +18,7 @@ const SCANNER_BODY_LIST = [
 	"Body2SUP", // Leopard
 	"Body4ABT", // Bug
 	"Body1REC", // viper
-]
+];
 
 // ========================
 // TANK BODY SECTION
@@ -57,7 +57,7 @@ const TANK_BODY_LIST_THERMIC = [
 // TANK PROP SECTION
 // ========================
 const TANK_PROP_LIST = [
-    "tracked01", // track
+	"tracked01", // track
 	"HalfTrack", // half-track
 	"wheeled01" // wheels (early T1 fallback before Half-Tracks are researched)
 ];
@@ -83,10 +83,33 @@ const ROCKET_WEAPON_LIST = [
 ];
 
 // ========================
+// TANK ROCKET ARRAY SECTION (Anti-Personnel / Splash Support sharing Rocket upgrades)
+// ========================
+const ROCKET_ARRAY_WEAPON_LIST = [
+	"Missile-MdArt", // Seraph Missile Array
+	"Rocket-MRL-Hvy", // Heavy Rocket Array
+	"Rocket-MRL" // Mini-Rocket Array
+];
+
+// ========================
 // TANK BUNKER BUSTER
 // ========================
 const BUNKER_BUSTER_WEAPON = [
 	"Rocket-BB",
+];
+
+// ========================
+// TANK ANTI-AIR SECTION
+// ========================
+const AA_WEAPON_LIST = [
+	"AAGunLaser",      // Stormbringer AA Laser
+	"Missile-HvySAM",  // Vindicator SAM
+	"Missile-LtSAM",   // Avenger SAM
+	"QuadRotAAGun",    // Whirlwind AA Turret
+	"AAGun2Mk1Quad",   // Quad AA Flak Cannon
+	"Rocket-Sunburst", // Sunburst AA Rocket Array
+	"AAGun2Mk1",       // AA Flak Cannon
+	"QuadMg1AAGun",    // Hurricane AA Turret
 ];
 
 // ========================
@@ -100,7 +123,7 @@ const MACHINEGUN_WEAPON_LIST = [
 	"MG3Mk1", // Heavy machine gun
 	"MG2Mk1", // Twin machine gun
 	"MG1Mk1" // Machine gun (early T1 fallback)
-]
+];
 
 // ========================
 // TANK FLAME SECTION
@@ -123,7 +146,7 @@ const CYBORG_HEAVY_ROCKETS = [
 const CYBORG_LIGHT_ROCKETS = [
 	"Cyb-Wpn-Atmiss", // Cyborg scourge
 	"CyborgRocket" // Cyborg lancer
-]
+];
 
 // ========================
 // CYBORG ROCKETS SECTION
@@ -162,10 +185,17 @@ const VTOL_BODY_LIST = [
 	"Body1REC", // Viper
 ];
 
-const VTOL_WEAPONS = [
+const VTOL_ROCKET_WEAPONS = [
+	"Missile-VTOL-AT", // Scourge VTOL
+	"Rocket-VTOL-HvyA-T", // Tank-Killer VTOL
+	"Rocket-VTOL-LtA-T", // Lancer VTOL
+	"Rocket-VTOL-Pod", // Mini-Rocket Pod VTOL
+];
+
+const VTOL_BOMB_WEAPONS = [
 	"Bomb5-VTOL-Plasmite", // Plasmite Bomb Bay
 	"Bomb4-VTOL-HvyINC", // Thermite Bomb Bay
 	"Bomb2-VTOL-HvHE", // HEAP Bomb Bay
-	"Bomb3-VTOL-LtINC", // Phosphor Bomb Bay
-	"Bomb1-VTOL-LtHE", // Cluster Bomb Bay
 ];
+
+const VTOL_WEAPONS = VTOL_ROCKET_WEAPONS.concat(VTOL_BOMB_WEAPONS);

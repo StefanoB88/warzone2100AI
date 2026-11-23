@@ -1,4 +1,5 @@
 var enemiesList = [];
+var scanForVTOLsTimerActive = false;
 
 function eventStartLevel() {
 	// Greets the player
@@ -12,6 +13,12 @@ function eventStartLevel() {
 	bunkerBusterGroup = newGroup();
 	helperGroup = newGroup();
 	vtolGroup = newGroup();
+	aaGroup = newGroup();
+	rallyGroup = newGroup();
+
+	// Classify the map from its oil per player at tick 0 (before any truck is assigned a role)
+	checkIsHighOilMap();
+	checkVtolsEnabled();
 
 	enumDroid(me).forEach(droid => {
 		eventDroidBuilt(droid);
@@ -24,9 +31,6 @@ function eventStartLevel() {
 
 	// Check if the Technology level is 4
 	isMultiTech4();
-
-	// Initialize high/low oil classification at tick 0 instead of waiting 30s
-	checkIsHighOilMap();
 
 	// Recycle old builder if possible
 	recycleOldBuilders();
@@ -55,7 +59,7 @@ function eventStartLevel() {
 	setTimer("build", reactionSpeedDelay + 350 + ((1 + random(12)) * random(10))); // ~0.4 Seconds
 	setTimer("attack", reactionSpeedDelay + 800 + ((1 + random(20)) * random(8))); // ~0.8 Seconds
 	setTimer("checkIsHighOilMap", reactionSpeedDelay + 30000 + ((1 + random(30)) * random(10))); // 30 Seconds
-	setTimer("setCurrentEnemy", reactionSpeedDelay + 180000 + ((1 + random(30)) * random(10))); // 3 Minutes
+	setTimer("setCurrentEnemy", reactionSpeedDelay + 60000 + ((1 + random(30)) * random(10))); // 1 Minute
 	setTimer("lookForOil", reactionSpeedDelay + 900 + ((1 + random(15)) * random(8))); // ~0.9 Seconds
 	setTimer("myBaseInTrouble", reactionSpeedDelay + 5000 + ((1 + random(30)) * random(10))); // 5 Seconds
 	setTimer("checkAllyBaseInTrouble", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))); // 15 Seconds
@@ -63,12 +67,13 @@ function eventStartLevel() {
 	setTimer("checkTrucksCount", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))); // 2 Minutes
 	setTimer("donateOil", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))); // 2 Minutes
 	setTimer("checkAllies", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))); // 2 Minutes
-	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 120000 + ((1 + random(33)) * random(88))); // 2 Minutes
+	setTimer("checkForDefeatedAllies", reactionSpeedDelay + 20000 + ((1 + random(33)) * random(88))); // 20 Seconds
 	setTimer("swapBuildersRole", reactionSpeedDelay + 10000 + ((1 + random(30)) * random(10))); // 10 Seconds
 	setTimer("callIdleBuildersToBase", reactionSpeedDelay + 5000 + ((1 + random(30)) * random(10))); // 5 Seconds
 	setTimer("checkIfDead", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))); // 15 Seconds
 	setTimer("askForTruck", reactionSpeedDelay + 120000 + ((1 + random(30)) * random(10))); // 2 Minutes
 	setTimer("scanForVTOLs", reactionSpeedDelay + 15000 + ((1 + random(30)) * random(10))); // 15 Seconds
+	scanForVTOLsTimerActive = true;
 	setTimer("recycleObsoleteUnits", reactionSpeedDelay + 45000 + ((1 + random(30)) * random(10))); // 45 Seconds
 }
 
@@ -91,11 +96,14 @@ function eventGameLoaded() {
 	if (bunkerBusterGroup === undefined) bunkerBusterGroup = newGroup();
 	if (helperGroup === undefined) helperGroup = newGroup();
 	if (vtolGroup === undefined) vtolGroup = newGroup();
+	if (aaGroup === undefined) aaGroup = newGroup();
+	if (rallyGroup === undefined) rallyGroup = newGroup();
 
 	isSeaMap = isHoverMap();
 	setDifficulty();
 	isMultiTech4();
 	checkIsHighOilMap();
+	checkVtolsEnabled();
 
 	alliesList = getAliveAllyPlayersData();
 	enemiesList = getAliveEnemyPlayersData();
@@ -109,7 +117,9 @@ function eventGameLoaded() {
 		...enumGroup(attackerGroup).map(d => d.id),
 		...enumGroup(bunkerBusterGroup).map(d => d.id),
 		...enumGroup(helperGroup).map(d => d.id),
-		...enumGroup(vtolGroup).map(d => d.id)
+		...enumGroup(vtolGroup).map(d => d.id),
+		...enumGroup(aaGroup).map(d => d.id),
+		...enumGroup(rallyGroup).map(d => d.id)
 	]);
 	for (const droid of enumDroid(me)) {
 		if (droid.droidType !== DROID_CONSTRUCT && !assignedCombatIds.has(droid.id)) {
@@ -118,7 +128,22 @@ function eventGameLoaded() {
 	}
 }
 
-// Balance builders cleanly across baseBuildersGroup (2-4), dedicated oilGrabbersGroup (up to 2-3), and defensesBuildersGroup
+// Returns target truck split across Group A (base), Group B (oil), and Group C (forward army support)
+function getTargetBuilderSplit(total) {
+	if (total <= 1) {
+		return { base: total, oil: 0, defense: 0 };
+	}
+	const oil = (isHighOilMap && total >= 10) ? 3 : (total >= 7 ? 2 : 1);
+	const defense = total >= 11 ? 3 : (total >= 8 ? 2 : (total >= 5 ? 1 : 0));
+	const base = Math.max(1, total - oil - defense);
+	return { base: base, oil: oil, defense: defense };
+}
+
+function isTruckInGroup(droid, groupId) {
+	return Boolean(droid && groupId !== undefined && enumGroup(groupId).some(d => d.id === droid.id));
+}
+
+// Balance builders cleanly across Group A (baseBuildersGroup), Group B (oilGrabbersGroup), and Group C (defensesBuildersGroup)
 function swapBuildersRole() {
 	const allBuilders = enumDroid(me, DROID_CONSTRUCT);
 	const baseBuilders = enumGroup(baseBuildersGroup);
@@ -140,28 +165,46 @@ function swapBuildersRole() {
 	const updatedBase = enumGroup(baseBuildersGroup);
 	const updatedOil = enumGroup(oilGrabbersGroup);
 	const updatedDef = enumGroup(defensesBuildersGroup);
+	const split = getTargetBuilderSplit(allBuilders.length);
 
-	// Always keep up to 2 base builders when we have 2+ trucks
-	if (allBuilders.length >= 2 && updatedBase.length < 2) {
-		const donor = updatedDef.length > 0 ? updatedDef[updatedDef.length - 1] : updatedOil[updatedOil.length - 1];
+	const pickDonor = (list) => {
+		if (!list || list.length === 0) return null;
+		return list.find(d => typeof isTruckBusy === "function" && !isTruckBusy(d)) || list[list.length - 1];
+	};
+
+	if (updatedBase.length < split.base) {
+		let donor = null;
+		if (updatedDef.length > split.defense) {
+			donor = pickDonor(updatedDef);
+		} else if (updatedOil.length > split.oil) {
+			donor = pickDonor(updatedOil);
+		} else if (updatedBase.length < Math.min(2, split.base)) {
+			if (updatedDef.length > 0) {
+				donor = pickDonor(updatedDef);
+			} else if (updatedOil.length > 1) {
+				donor = pickDonor(updatedOil);
+			}
+		}
 		if (donor) {
 			groupAdd(baseBuildersGroup, donor);
 		}
 		return;
 	}
 
-	// Ensure at least 1 dedicated oil grabber as soon as we have 3+ trucks
-	if (allBuilders.length >= 3 && updatedOil.length === 0) {
-		const donor = updatedDef.length > 0 ? updatedDef[updatedDef.length - 1] : (updatedBase.length > 2 ? updatedBase[updatedBase.length - 1] : null);
+	if (updatedOil.length < split.oil) {
+		const donor = updatedBase.length > split.base
+			? pickDonor(updatedBase)
+			: (updatedDef.length > split.defense ? pickDonor(updatedDef) : null);
 		if (donor) {
 			groupAdd(oilGrabbersGroup, donor);
 		}
 		return;
 	}
 
-	// Once we have 5+ trucks, ensure at least 1 dedicated defense builder
-	if (allBuilders.length >= 5 && updatedDef.length === 0) {
-		const donor = updatedBase.length > 2 ? updatedBase[updatedBase.length - 1] : (updatedOil.length > 2 ? updatedOil[updatedOil.length - 1] : null);
+	if (updatedDef.length < split.defense) {
+		const donor = updatedBase.length > split.base
+			? pickDonor(updatedBase)
+			: (updatedOil.length > split.oil ? pickDonor(updatedOil) : null);
 		if (donor) {
 			groupAdd(defensesBuildersGroup, donor);
 		}
@@ -182,27 +225,82 @@ function checkIfDead() {
 function askForTruck() {
 	if (currentlyDead) {
 		chat(ALLIES, "need truck");
+		// Human teammates read the quick chat line more easily than free text
+		if (typeof quickChat === "function" && typeof WzQuickChatMessages !== "undefined") {
+			quickChat(ALLIES, WzQuickChatMessages.TEAM_REQUEST_TRANSFER_REBUILD);
+		}
 	}
 }
 
-// Set the nearest enemy player (including scavengers) as enemy to attack
-function setCurrentEnemy(enemyPlayerData) {
+// While gameTime is below this, the main enemy was chosen by a teammate (beacon) and is not re-evaluated
+var enemyLockUntil = 0;
+
+// Allied (not our own) ground units operating around an enemy's base: the sign that our team is already fighting that enemy
+function countAlliedPressure(enemy) {
+	if (!enemy || !enemy.base) {
+		return 0;
+	}
+	return enumRange(enemy.base.x, enemy.base.y, 22, ALLIES, false).filter(
+		o => o.type === DROID && o.player !== me && !o.isVTOL && (o.droidType === DROID_WEAPON || o.droidType === DROID_CYBORG)
+	).length;
+}
+
+// Lower is better: the distance from our base, minus up to 40 tiles for an enemy our allies are already attacking.
+// Scavengers receive a large +5000 penalty so real enemy players always take priority.
+function scoreEnemy(enemy) {
+	const dist = (enemy && enemy.base) ? distBetweenTwoPoints(BASE.x, BASE.y, enemy.base.x, enemy.base.y) : 9999;
+	const scavPenalty = (enemy && isScavengerPlayer(enemy.position)) ? 5000 : 0;
+	return dist + scavPenalty - Math.min(10, countAlliedPressure(enemy)) * 4;
+}
+
+// Chooses the main enemy for our offensives.
+// With an argument (ally beacon / explicit request) that enemy is taken, optionally locked for `lockMs`
+// (unless it is Scavengers while real enemy players remain alive).
+// Without one, Wally picks from living real enemy players first and only falls back to Scavengers once no real enemies remain.
+function setCurrentEnemy(enemyPlayerData, lockMs) {
 	enemiesList = getAliveEnemyPlayersData();
+	const realEnemies = enemiesList.filter(e => !isScavengerPlayer(e.position));
+	const candidatePool = realEnemies.length > 0 ? realEnemies : enemiesList;
 
 	if (enemyPlayerData && enemyPlayerData.position !== undefined) {
-		currentEnemy = enemyPlayerData;
-	} else if (enemiesList.length > 0) {
-		// Treat all enemies (including scavengers) equally and pick the closest enemy to our base
-		enemiesList.sort((a, b) => {
-			if (!a.base || !b.base) return 0;
-			return distBetweenTwoPoints(BASE.x, BASE.y, a.base.x, a.base.y) -
-				   distBetweenTwoPoints(BASE.x, BASE.y, b.base.x, b.base.y);
-		});
+		if (!isScavengerPlayer(enemyPlayerData.position) || realEnemies.length === 0) {
+			currentEnemy = enemyPlayerData;
+			if (typeof lockMs === "number" && lockMs > 0) {
+				enemyLockUntil = gameTime + lockMs;
+			}
+			return;
+		}
+	}
 
-		currentEnemy = enemiesList[0];
-	} else {
+	if (candidatePool.length === 0) {
 		areAllEnemiesDead = true;
 		shutdownScripts();
+		return;
+	}
+
+	const current = (currentEnemy && currentEnemy.position !== undefined)
+		? candidatePool.find(e => e.position === currentEnemy.position)
+		: undefined;
+	if (current && gameTime < enemyLockUntil && gameTime > enemyLockUntil - 600000) {
+		currentEnemy = current;
+		return;
+	}
+
+	let best = candidatePool[0];
+	let bestScore = scoreEnemy(best);
+	for (let i = 1; i < candidatePool.length; ++i) {
+		const score = scoreEnemy(candidatePool[i]);
+		if (score < bestScore) {
+			best = candidatePool[i];
+			bestScore = score;
+		}
+	}
+
+	// Refresh the data of the current enemy (its base position can change); switch only for a clear improvement
+	if (current && (best.position === current.position || bestScore > scoreEnemy(current) - 15)) {
+		currentEnemy = current;
+	} else {
+		currentEnemy = best;
 	}
 }
 
@@ -225,7 +323,10 @@ function shutdownScripts() {
 	removeTimer("callIdleBuildersToBase");
 	removeTimer("checkIfDead");
 	removeTimer("askForTruck");
-	removeTimer("scanForVTOLs");
+	if (scanForVTOLsTimerActive) {
+		removeTimer("scanForVTOLs");
+		scanForVTOLsTimerActive = false;
+	}
 	removeTimer("recycleObsoleteUnits");
 }
 
@@ -259,24 +360,21 @@ function eventDroidBuilt(droid) {
 	}
 
 	if (droid.droidType === DROID_CONSTRUCT) {
+		const totalBuilders = enumDroid(me, DROID_CONSTRUCT).length;
+		const split = getTargetBuilderSplit(totalBuilders);
 		const baseBuildersCount = enumGroup(baseBuildersGroup).length;
 		const oilGrabbersCount = enumGroup(oilGrabbersGroup).length;
 		const defBuildersCount = enumGroup(defensesBuildersGroup).length;
-		const targetEarlyOilGrabbers = isHighOilMap ? 3 : 2;
 
-		// Keep first 2 trucks at base, dedicate trucks 3-4 (+6th) to oil capture, and 5th+ to defenses/base
-		if (baseBuildersCount < 2) {
-			groupAdd(baseBuildersGroup, droid);
-		} else if (oilGrabbersCount < targetEarlyOilGrabbers) {
+		// Assign 1st truck to base, keep small Group B for oils, majority to Group A (base), remaining split to Group C (forward support)
+		if (baseBuildersCount >= 1 && oilGrabbersCount < split.oil) {
 			groupAdd(oilGrabbersGroup, droid);
-		} else if (defBuildersCount === 0) {
+		} else if (baseBuildersCount < split.base) {
+			groupAdd(baseBuildersGroup, droid);
+		} else if (defBuildersCount < split.defense) {
 			groupAdd(defensesBuildersGroup, droid);
-		} else if (oilGrabbersCount < 3) {
-			groupAdd(oilGrabbersGroup, droid);
-		} else if (baseBuildersCount < 4) {
-			groupAdd(baseBuildersGroup, droid);
 		} else {
-			groupAdd(defensesBuildersGroup, droid);
+			groupAdd(baseBuildersGroup, droid);
 		}
 
 		return;
@@ -293,8 +391,19 @@ function eventDroidBuilt(droid) {
 		return;
 	}
 
+	// Dedicated anti-air tanks escort the army from behind instead of charging with it (see manageAntiAir in attack.js)
+	if (isAntiAirDroid(droid)) {
+		groupAdd(aaGroup, droid);
+		return;
+	}
+
 	if (droid.droidType === DROID_WEAPON || droid.droidType === DROID_SENSOR || droid.droidType === DROID_CYBORG) {
-		groupAdd(attackerGroup, droid);
+		// While the army is away, fresh units wait at base and join the front as a batch instead of one by one
+		if (droid.droidType !== DROID_SENSOR && shouldHoldReinforcements()) {
+			groupAdd(rallyGroup, droid);
+		} else {
+			groupAdd(attackerGroup, droid);
+		}
 		return;
 	}
 }
@@ -330,16 +439,31 @@ function eventBeacon(x, y, from, to, message) {
 	// Otherwise, check if the beacon points at an enemy base or enemy units (ally requesting coordinated attack)
 	const nearbyEnemies = enumRange(x, y, 20, ENEMIES, false);
 	if (nearbyEnemies.length > 0) {
-		const targetPlayer = nearbyEnemies[0].player;
+		// A human teammate is always followed. Between AI teammates the lower player number leads,
+		// so two bots announcing different targets do not keep swapping enemies with each other.
+		if (playerData[from] && playerData[from].isAI && from > me) {
+			return;
+		}
+		const nonScavObj = nearbyEnemies.find(obj => !isScavengerPlayer(obj.player));
+		const hasRealEnemies = enemiesList.some(e => !isScavengerPlayer(e.position) && isPlayerAlive(e.position));
+		if (!nonScavObj && hasRealEnemies) {
+			return; // Never lock the main offensive onto Scavengers while real enemy players are still alive
+		}
+		const targetPlayer = (nonScavObj || nearbyEnemies[0]).player;
 		const enemyData = playerDataObject(targetPlayer);
 		if (enemyData) {
-			setCurrentEnemy(enemyData);
+			setCurrentEnemy(enemyData, 300000); // Stay on the requested enemy for 5 minutes
 		}
 	}
 }
 
 // Chain nearby oil resources immediately after finishing a derrick and defend remote derricks (Cobra & SemperFi strategy)
 function eventStructureBuilt(structure, droid) {
+	// A finished Research Lab (or its module) starts working at once instead of waiting for the research timer
+	if (structure && structure.player === me && structure.stattype === RESEARCH_LAB && reactionSpeedDelay === 0) {
+		research();
+	}
+
 	if (!droid || droid.player !== me || droid.droidType !== DROID_CONSTRUCT) {
 		return;
 	}
@@ -347,38 +471,44 @@ function eventStructureBuilt(structure, droid) {
 		pendingBuildOrders.delete(droid.id);
 	}
 
-	// 1. Cobra strategy: check for nearby free oil resources within 10 tiles of the truck and build immediately
-	const nearbyOils = enumRange(droid.x, droid.y, 10, ALL_PLAYERS, false)
-		.filter(obj =>
-			obj.type === FEATURE &&
-			(obj.stat === OIL_RES_STAT || (typeof OIL_RESOURCE !== "undefined" && obj.stattype === OIL_RESOURCE)) &&
-			isOilAreaSafe(obj.x, obj.y) &&
-			!isOilTargetedByPendingBuild(obj.x, obj.y)
-		)
-		.sort((a, b) => distBetweenTwoPoints(droid.x, droid.y, a.x, a.y) - distBetweenTwoPoints(droid.x, droid.y, b.x, b.y));
+	const inOilGroup = isTruckInGroup(droid, oilGrabbersGroup) ||
+		(countDroid(DROID_CONSTRUCT, me) === 1 && countStruct(DERRICK_STAT) === 0);
 
-	if (nearbyOils.length > 0) {
-		const nextOil = nearbyOils[0];
-		if (orderDroidBuild(droid, DORDER_BUILD, DERRICK_STAT, nextOil.x, nextOil.y)) {
-			if (typeof pendingBuildOrders !== "undefined") {
-				pendingBuildOrders.set(droid.id, {
-					stat: DERRICK_STAT,
-					x: nextOil.x,
-					y: nextOil.y,
-					time: gameTime
-				});
+	if (inOilGroup) {
+		// 1. Group B chains nearby free oil resources within 10 tiles immediately
+		const nearbyOils = enumRange(droid.x, droid.y, 10, ALL_PLAYERS, false)
+			.filter(obj =>
+				obj.type === FEATURE &&
+				(obj.stat === OIL_RES_STAT || (typeof OIL_RESOURCE !== "undefined" && obj.stattype === OIL_RESOURCE)) &&
+				isOilAreaSafe(obj.x, obj.y) &&
+				!isOilTargetedByPendingBuild(obj.x, obj.y)
+			)
+			.sort((a, b) => distBetweenTwoPoints(droid.x, droid.y, a.x, a.y) - distBetweenTwoPoints(droid.x, droid.y, b.x, b.y));
+
+		if (nearbyOils.length > 0) {
+			const nextOil = nearbyOils[0];
+			if (orderDroidBuild(droid, DORDER_BUILD, DERRICK_STAT, nextOil.x, nextOil.y)) {
+				setPendingOrder(droid, DERRICK_STAT, nextOil.x, nextOil.y);
+				return;
 			}
-			return;
 		}
-	}
 
-	// 2. Cobra & SemperFi strategy: if we just built a remote derrick outside our base, defend it right on the spot
-	if (structure && !isNearBase(structure.x, structure.y)) {
-		scanAndDefendPosition(structure, droid);
+		// 2. Defend contested derricks immediately, and on low-oil maps also fortify uncontested oil derricks beyond core base
+		if (structure && structure.stattype === RESOURCE_EXTRACTOR && isTruckInGroup(droid, oilGrabbersGroup)) {
+			const hasEnemyOilContest = enumRange(droid.x, droid.y, 8, ENEMIES, false).some(obj =>
+				(obj.type === STRUCTURE && obj.stattype === RESOURCE_EXTRACTOR) ||
+				(obj.type === DROID && obj.droidType === DROID_CONSTRUCT)
+			);
+			const shouldDefendLowOilDerrick = !isHighOilMap &&
+				distBetweenTwoPoints(BASE.x, BASE.y, structure.x, structure.y) > 8;
+			if (hasEnemyOilContest || shouldDefendLowOilDerrick) {
+				scanAndDefendPosition(structure, droid);
+			}
+		}
 	}
 }
 
-// Contest oil wells stolen by enemy trucks right in front of us, or grab nearby oil (Cobra & SemperFi strategy)
+// Contest oil wells stolen by enemy trucks right in front of Group B or chain nearby oil (Cobra & SemperFi strategy)
 function eventDroidIdle(droid) {
 	if (!droid || droid.player !== me || droid.droidType !== DROID_CONSTRUCT) {
 		return;
@@ -387,7 +517,13 @@ function eventDroidIdle(droid) {
 		pendingBuildOrders.delete(droid.id);
 	}
 
-	// 1. Check if there is another free safe oil resource within 8 tiles of this truck
+	const inOilGroup = isTruckInGroup(droid, oilGrabbersGroup) ||
+		(countDroid(DROID_CONSTRUCT, me) === 1 && countStruct(DERRICK_STAT) === 0);
+	if (!inOilGroup) {
+		return;
+	}
+
+	// 1. Check if there is another free safe oil resource within 8 tiles of this Group B truck
 	const nearbyOils = enumRange(droid.x, droid.y, 8, ALL_PLAYERS, false)
 		.filter(obj =>
 			obj.type === FEATURE &&
@@ -400,14 +536,7 @@ function eventDroidIdle(droid) {
 	if (nearbyOils.length > 0) {
 		const nextOil = nearbyOils[0];
 		if (orderDroidBuild(droid, DORDER_BUILD, DERRICK_STAT, nextOil.x, nextOil.y)) {
-			if (typeof pendingBuildOrders !== "undefined") {
-				pendingBuildOrders.set(droid.id, {
-					stat: DERRICK_STAT,
-					x: nextOil.x,
-					y: nextOil.y,
-					time: gameTime
-				});
-			}
+			setPendingOrder(droid, DERRICK_STAT, nextOil.x, nextOil.y);
 			return;
 		}
 	}
@@ -422,7 +551,7 @@ function eventDroidIdle(droid) {
 		(obj.type === DROID && obj.droidType === DROID_CONSTRUCT)
 	);
 
-	if (hasEnemyDerrickOrTruck && !isNearBase(droid.x, droid.y)) {
+	if (hasEnemyDerrickOrTruck && !isNearBase(droid.x, droid.y) && isTruckInGroup(droid, oilGrabbersGroup)) {
 		scanAndDefendPosition(undefined, droid);
 	}
 }
